@@ -1,6 +1,6 @@
 from machine import I2C, Pin
 import time
-from bmp280 import BMP280Sensor
+import bmp280
 
 class BMP280Sensor:
     """
