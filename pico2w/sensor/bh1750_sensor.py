@@ -55,7 +55,7 @@ class BH1750Sensor:
             if mode is None:
                 mode = self.mode
                 
-            return self.sensor.luminance(mode)
+            return {"L": self.sensor.luminance(mode)}
         except Exception as e:
             print(f"Erreur de lecture de luminosité: {e}")
             return None
