@@ -2,7 +2,7 @@ from time import sleep, time
 from library.ulora import LoRa, SPIConfig
 from machine import Pin
 import dht
-from sensor import bh1750_sensor, dth22_sensor, lm393_sensor
+from sensor import bh1750_sensor, dth22_sensor, lm393_sensor, ds18b20_sensor
 
 # # LoRa Parameters
 SX1278_RST = 4
@@ -18,6 +18,7 @@ SERVER_ADDRESS = 2
 bh1750_sensor = bh1750_sensor.BH1750Sensor()
 dth22_sensor = dth22_sensor.DTH22Sensor()
 lm393_sensor = lm393_sensor.LM393Sensor()
+ds18b20_sensor = ds18b20_sensor.DS18B20Sensor()
 
 # initialise radio
 lora = LoRa(CONFIG_SPIBUS, SX1278_INT, CLIENT_ADDRESS, SX1278_CS, reset_pin=SX1278_RST, freq=SX1278_FREQ, tx_power=SX1278_POW, acks=True)
@@ -33,16 +34,19 @@ while True:
             raise Exception("Capteurs dth22_sensor non initialisés")
         if lm393_sensor is None:
             raise Exception("Capteurs lm393_sensor non initialisés")
+        if ds18b20_sensor is None:
+            raise Exception("Capteurs ds18b20_sensor non initialisés")
         # Lire les valeurs des capteurs
         lux = bh1750_sensor.read_luminance()
-        temp = dth22_sensor.read_temp()
-        humidite = dth22_sensor.read_humidity()
-        humidite_sol = lm393_sensor.read_temps_sol()
+        temp_air = dth22_sensor.read_temp()
+        humidite_air = dth22_sensor.read_humidity()
+        humidite_sol = lm393_sensor.read_humidity()
+        temp_sol = ds18b20_sensor.read_temp()
 
-        datas = lux + temp + humidite + humidite_sol
+        datas = lux + temp_air + humidite_air + humidite_sol + temp_sol
         type = 1
         timestamps = time()
-        uid = 1
+        uid = 1234
 
 
         
