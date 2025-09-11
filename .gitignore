@@ -2,3 +2,5 @@
 /.vscode
 /exemple_*
 /pi5/lora_env
+.idea
+.claude

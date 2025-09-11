@@ -27,6 +27,25 @@ while True:
         # Convert from bytes to string
         message = packet.decode("utf-8", errors="ignore").strip()
         print(f"📥 Received: {message}")
+        
+        # Parser le message pour extraire les données
+        try:
+            parts = message.split(',')
+            data = {}
+            for part in parts:
+                if ':' in part:
+                    key, value = part.split(':', 1)
+                    data[key] = value
+            
+            # Afficher les données parsées
+            if 'L' in data:
+                light_lux = int(data['L'])
+                print(f"   💡 Light: {light_lux} lux")
+            if 'count' in data:
+                print(f"   📊 Count: {data['count']}")
+                
+        except Exception as e:
+            print(f"   ⚠️ Error parsing message: {e}")
     else:
         continue
 
