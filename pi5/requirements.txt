@@ -1,0 +1,10 @@
+# Adafruit Blinka - Provides board, busio, digitalio for Raspberry Pi
+adafruit-blinka>=8.20.0
+
+# Adafruit CircuitPython RFM9x library for LoRa communication
+adafruit-circuitpython-rfm9x>=2.2.0
+
+# Dependencies for Blinka (usually installed automatically)
+pyftdi>=0.54.0
+Adafruit-PlatformDetect>=3.47.0
+Adafruit-PureIO>=1.1.11
