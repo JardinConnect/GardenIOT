@@ -1,9 +1,10 @@
 from time import sleep
 from ulora import LoRa, SPIConfig
 from machine import Pin
-import dht
-from ds18b20 import DS18B20Sensor  # Importer notre module DS18B20
-from sensor import *
+from sensor.bh1750_sensor import BH1750Sensor
+from sensor.bmp280_sensor import BMP280Sensor
+from sensor.dth22_sensor import DTH22Sensor
+from sensor.lm393_sensor import LM393Sensor
 
 # # LoRa Parameters
 # SX1278_RST = 4
@@ -29,13 +30,24 @@ count = 0
 while True:
     try:
         # Lire les valeurs des capteurs
+        lux = bh1750_sensor.read_luminance()
+        
+        # Envoyer la valeur brute du capteur (0-65535)
+        if lux is not None:
+            light_value = int(lux)
+        else:
+            light_value = 0
         
         #construction du message         
-        message = f'count: {count}'
+        message = f'L:{light_value},count:{count}'
+        
+        # Afficher avec la valeur en lux pour debug
+        print(f"Sending - Light: {light_value} lux, Count: {count}")
+        
         # Envoyer la température via LoRa
         if message is not None:
             # lora.send(message, SERVER_ADDRESS)
-            print(message)
+            print(f"Message: {message}")
         else:
             message = f'Aucun capteur trouve (count: {count})'
             # lora.send(message, SERVER_ADDRESS)

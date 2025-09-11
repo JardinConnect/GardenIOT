@@ -1,7 +1,7 @@
 from machine import Pin, ADC
 import time
 
-class SoilMoistureSensor:
+class LM393Sensor:
     def __init__(self, analog_pin=26, digital_pin=16, use_digital=False):
         """
         Initialise le capteur d'humidité du sol LM393
