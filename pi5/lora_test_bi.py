@@ -28,7 +28,14 @@ rfm9x.preamble_length = 8        # 8 symbols
 rfm9x.sync_word = 0x12           # Default
 
 print("=== Pi5 LoRa Test ===")
-print("Config: 433MHz, 14dBm, SF7, 125kHz, CR4/5")
+print("Configuration applied:")
+print(f"  Frequency: 433.0 MHz")
+print(f"  TX Power: {rfm9x.tx_power} dBm")
+print(f"  Spreading Factor: {rfm9x.spreading_factor}")
+print(f"  Signal Bandwidth: {rfm9x.signal_bandwidth} Hz")
+print(f"  Coding Rate: 4/{rfm9x.coding_rate}")
+print(f"  Preamble Length: {rfm9x.preamble_length}")
+print(f"  Sync Word: 0x{rfm9x.sync_word:02X}")
 print("Listening for nano messages...")
 print("===================")
 
