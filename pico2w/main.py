@@ -36,14 +36,14 @@ while True:
             raise Exception("Capteurs lm393_sensor non initialisés")
         if ds18b20_sensor is None:
             raise Exception("Capteurs ds18b20_sensor non initialisés")
-        # Lire les valeurs des capteurs
-        lux = bh1750_sensor.read_luminance()
-        temp_air = dth22_sensor.read_temp()
-        humidite_air = dth22_sensor.read_humidity()
-        humidite_sol = lm393_sensor.read_humidity()
-        temp_sol = ds18b20_sensor.read_temp()
+        # Read sensor values
+        light = bh1750_sensor.read_luminance()
+        air_temp = dth22_sensor.read_temp()
+        air_humidity = dth22_sensor.read_humidity()
+        soil_humidity = lm393_sensor.read_humidity()
+        soil_temp = ds18b20_sensor.read_temp()
 
-        datas = lux + ':' + temp_air + ':' + humidite_air + ':' + humidite_sol + ':' + temp_sol
+        datas = light + ':' + air_temp + ':' + air_humidity + ':' + soil_humidity + ':' + soil_temp
         type = 1
         timestamps = time()
         uid = 1234
