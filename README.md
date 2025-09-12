@@ -25,12 +25,12 @@ B|TYPE|TIMESTAMP|UID(4octets)|DATAS|E
 
 | Code | Description |
 |------|-------------|
-| TA   | Température Air |
-| TS   | Température Sol |
-| HA   | Humidité Air |
-| HS   | Humidité Sol |
-| B    | Batterie |
-| L    | Luminosité |
+| TA   | Température Air | {-40;80}
+| TS   | Température Sol | {-40;80}
+| HA   | Humidité Air | {0;100}
+| HS   | Humidité Sol | {0;100}
+| B    | Batterie | {0;100}
+| L    | Luminosité | {0;65535}
 
 ## Format ACK
 
@@ -42,7 +42,7 @@ Structure de réponse avec gestion d'erreurs :
 
 ### Message de type Datas (Type 1)
 ```
-B|1|17778946513|f5io|1B100:1TA12:1TS13:1HA25:1HS100:2HS95:L9|E
+B|1|17778946513|f5io|1B100:1TA12:1TS13:1HA25:1HS100:2HS95:1L9|E
 ```
 
 Décomposition :
@@ -50,14 +50,14 @@ Décomposition :
 - `1` : Type de message (Datas)
 - `17778946513` : Timestamp
 - `f5io` : UID du noeud
-- `1B100:1TA12:1TS13:1HA25:1HS100:2HS95:L9` : Données (séparées par `:`)
+- `1B1001TA121TS131HA251HS1002HS95L9` : Données
   - `1B100` : Batterie à 100%
   - `1TA12` : Température Air 12°C
   - `1TS13` : Température Sol 13°C
   - `1HA25` : Humidité Air 25%
   - `1HS100` : Humidité Sol 1 à 100%
-  - `2HS95` : Humidité Sol 2 à 95%
-  - `L9` : Luminosité 9%
+  - `2HS95` : Humidité Sol 2 à 95% (Si jamais un deuxième est branché ! Sinon non)
+  - `L9` : Luminosité 12455 lux
 - `E` : Fin
 
 ### Message d'Alerte (Type 2)
@@ -91,9 +91,4 @@ Décomposition :
 - Les données sont encodées sur 8 bits
 - Conversion en valeur décimale côté récepteur
 - Communication unidirectionnelle : Pico2W → Pi5
-- Format des données dans la section DATAS :
-  - Pour messages type 1 : `[ID][TYPE][VALEUR]:[ID][TYPE][VALEUR]:...`
-  - Chaque donnée capteur est séparée par `:`
-  - `[ID]` : Numéro du capteur (1, 2, etc.) - optionnel pour capteurs uniques comme L
-  - `[TYPE]` : Type de capteur (TA, TS, HA, HS, B, L)
-  - `[VALEUR]` : Valeur mesurée
+- Format des données : `1[TYPE][VALEUR]` où le préfixe `1` indique une donnée valide
