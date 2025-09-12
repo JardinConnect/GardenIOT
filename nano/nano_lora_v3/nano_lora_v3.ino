@@ -261,12 +261,26 @@ bool checkIncomingMessages(unsigned long timeoutMs = 5000) {
   while (millis() - startTime < timeoutMs) {
     int packetSize = LoRa.parsePacket();
     if (packetSize > 0) {
+      Serial.print(F("RX packet size: "));
+      Serial.println(packetSize);
+      
       String received = "";
-      while (LoRa.available()) {
-        received += (char)LoRa.read();
+      // Wait a bit for complete packet
+      delay(10);
+      
+      int bytesRead = 0;
+      while (LoRa.available() && bytesRead < 200) { // Limit to prevent overflow
+        char c = LoRa.read();
+        // Only add printable characters and basic punctuation
+        if (c >= 32 && c <= 126) {
+          received += c;
+        }
+        bytesRead++;
       }
       
-      Serial.print(F("RX: "));
+      Serial.print(F("RX ("));
+      Serial.print(received.length());
+      Serial.print(F(" chars): "));
       Serial.println(received);
       
       // Parse incoming message
@@ -389,9 +403,20 @@ void setup() {
   }
   
   Serial.println(F("LoRa OK"));
-  LoRa.setTxPower(14);
-  LoRa.setSpreadingFactor(7);
-  LoRa.setSignalBandwidth(125E3);
+  
+  // Match Pi5 configuration
+  LoRa.setTxPower(14);           // Pi5 uses 23, but nano max is ~14
+  LoRa.setSpreadingFactor(7);    // SF7 for faster transmission
+  LoRa.setSignalBandwidth(125E3); // 125kHz bandwidth
+  LoRa.setCodingRate4(5);        // CR 4/5 for error correction
+  LoRa.setPreambleLength(8);     // Standard preamble
+  LoRa.setSyncWord(0x12);        // Default sync word
+  
+  Serial.println(F("LoRa configuration:"));
+  Serial.print(F("  Frequency: 433 MHz"));
+  Serial.print(F("  Power: 14 dBm"));
+  Serial.print(F("  SF: 7"));
+  Serial.println(F("  BW: 125 kHz"));
   
   Serial.println(F("==============================="));
   Serial.println(F("Setup complete!"));
