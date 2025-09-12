@@ -162,9 +162,6 @@ if __name__ == "__main__":
     # Créer une instance du capteur sur GP3
     sensor = DS18B20Sensor(data_pin=3)
     
-    # Calibration optionnelle (à faire selon votre plage de mesure)
-    # sensor.calibrate(min_temp=0, max_temp=40)
-    
     print("Mesure de la température DS18B20...")
     print("Appuyez sur Ctrl+C pour arrêter")
     
