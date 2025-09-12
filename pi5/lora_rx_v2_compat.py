@@ -47,6 +47,7 @@ MSG_TYPE_DATA = 1
 MSG_TYPE_ACK = 2
 MSG_TYPE_ALERT = 3
 MSG_TYPE_CONFIG = 4
+MSG_TYPE_ERROR = 5
 
 # Pi5 identifier
 PI5_UID = "pi5"
@@ -275,11 +276,41 @@ class LoRaReceiver:
         except Exception as e:
             logger.error(f"❌ Error sending ACK: {e}")
     
+    def send_error_response(self, raw_message, error_type):
+        """Send ERROR message back to sender"""
+        try:
+            timestamp = int(time.time())
+            message_counter = int(time.time() % 10000)  # Simple counter
+            
+            # Try to extract UID from malformed message for targeted response
+            sender_uid = "unknown"
+            try:
+                if "|" in raw_message:
+                    parts = raw_message.split("|")
+                    if len(parts) >= 3:
+                        sender_uid = parts[2] if parts[2] else "unknown"
+            except:
+                pass
+            
+            error_message = f"XXXXB|{MSG_TYPE_ERROR}|{timestamp}|{PI5_UID}|{message_counter}|FORMAT_ERROR_{error_type}|E"
+            
+            logger.warning(f"📤 Sending ERROR response: {error_message}")
+            
+            # Send ERROR
+            rfm9x.send(error_message.encode('utf-8'))
+            logger.info("⚠️ Error response sent")
+            
+        except Exception as e:
+            logger.error(f"❌ Error sending error response: {e}")
+    
     def process_message(self, message, rssi):
         """Process received message"""
         parsed_msg = ProtocolParser.parse_message(message)
         
         if not parsed_msg:
+            # Send error response for malformed messages
+            logger.warning(f"❌ Malformed message received: {message}")
+            self.send_error_response(message, "INVALID_FORMAT")
             return
         
         # Store in database

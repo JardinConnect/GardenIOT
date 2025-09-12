@@ -39,6 +39,7 @@
 #define MSG_TYPE_ACK 2
 #define MSG_TYPE_ALERT 3
 #define MSG_TYPE_CONFIG 4
+#define MSG_TYPE_ERROR 5
 
 // === ACK Configuration ===
 #define ACK_TIMEOUT 10000  // 10 seconds to wait for ACK
@@ -53,7 +54,7 @@ DallasTemperature ds18b20(&oneWire);
 
 // === Variables ===
 unsigned long lastSendTime = 0;
-const unsigned long SEND_INTERVAL = 30000; // Send every 30 seconds
+const unsigned long SEND_INTERVAL = 5000; // Send every 30 seconds
 bool hasRTC = false;
 bool hasDS18B20 = false;
 
@@ -194,66 +195,114 @@ bool sendMessageWithAck(int msgType, const char* data, unsigned long msgId) {
   }
 }
 
-// Function to parse incoming ACK messages
-bool parseAckMessage(String message, unsigned long* ackMsgId) {
-  // Expected format: XXXXB|2|timestamp|pi5|msgId|E
+// Function to parse incoming messages (ACK and ERROR)
+int parseIncomingMessage(String message, unsigned long* msgId, String* errorType) {
+  // Expected formats: 
+  // ACK: XXXXB|2|timestamp|pi5|msgId|E
+  // ERROR: XXXXB|5|timestamp|pi5|msgId|errorData|E
+  
   int firstPipe = message.indexOf('|');
-  if (firstPipe == -1) return false;
+  if (firstPipe == -1) return 0;
   
   int secondPipe = message.indexOf('|', firstPipe + 1);
-  if (secondPipe == -1) return false;
+  if (secondPipe == -1) return 0;
   
   String msgTypeStr = message.substring(firstPipe + 1, secondPipe);
-  if (msgTypeStr.toInt() != MSG_TYPE_ACK) return false;
+  int msgType = msgTypeStr.toInt();
   
-  // Find the message ID (5th field)
-  int pipeCount = 0;
-  int startPos = 0;
-  for (int i = 0; i < message.length() && pipeCount < 4; i++) {
-    if (message.charAt(i) == '|') {
-      pipeCount++;
-      if (pipeCount == 4) startPos = i + 1;
-    }
-  }
-  
-  if (pipeCount == 4) {
-    int endPos = message.indexOf('|', startPos);
-    if (endPos == -1) endPos = message.indexOf('E', startPos);
-    if (endPos > startPos) {
-      *ackMsgId = message.substring(startPos, endPos).toInt();
-      return true;
-    }
-  }
-  
-  return false;
-}
-
-// Function to check for incoming messages
-void checkIncomingMessages() {
-  int packetSize = LoRa.parsePacket();
-  if (packetSize > 0) {
-    String received = "";
-    while (LoRa.available()) {
-      received += (char)LoRa.read();
+  if (msgType == MSG_TYPE_ACK) {
+    // Find the message ID (5th field for ACK)
+    int pipeCount = 0;
+    int startPos = 0;
+    for (int i = 0; i < message.length() && pipeCount < 4; i++) {
+      if (message.charAt(i) == '|') {
+        pipeCount++;
+        if (pipeCount == 4) startPos = i + 1;
+      }
     }
     
-    Serial.print(F("RX: "));
-    Serial.println(received);
-    
-    // Check if it's an ACK
-    unsigned long ackMsgId;
-    if (parseAckMessage(received, &ackMsgId)) {
-      if (waitingForAck && ackMsgId == lastMessageId) {
-        Serial.print(F("✓ ACK received for message "));
-        Serial.println(ackMsgId);
-        waitingForAck = false;
-        retryCount = 0;
-      } else {
-        Serial.print(F("⚠ Unexpected ACK for message "));
-        Serial.println(ackMsgId);
+    if (pipeCount == 4) {
+      int endPos = message.indexOf('|', startPos);
+      if (endPos == -1) endPos = message.indexOf('E', startPos);
+      if (endPos > startPos) {
+        *msgId = message.substring(startPos, endPos).toInt();
+        return MSG_TYPE_ACK;
       }
     }
   }
+  else if (msgType == MSG_TYPE_ERROR) {
+    // Find the error data (6th field for ERROR)
+    int pipeCount = 0;
+    int startPos = 0;
+    for (int i = 0; i < message.length() && pipeCount < 5; i++) {
+      if (message.charAt(i) == '|') {
+        pipeCount++;
+        if (pipeCount == 5) startPos = i + 1;
+      }
+    }
+    
+    if (pipeCount == 5) {
+      int endPos = message.indexOf('|', startPos);
+      if (endPos == -1) endPos = message.indexOf('E', startPos);
+      if (endPos > startPos) {
+        *errorType = message.substring(startPos, endPos);
+        return MSG_TYPE_ERROR;
+      }
+    }
+  }
+  
+  return 0; // Unknown or malformed message
+}
+
+// Function to check for incoming messages with timeout
+bool checkIncomingMessages(unsigned long timeoutMs = 5000) {
+  unsigned long startTime = millis();
+  
+  while (millis() - startTime < timeoutMs) {
+    int packetSize = LoRa.parsePacket();
+    if (packetSize > 0) {
+      String received = "";
+      while (LoRa.available()) {
+        received += (char)LoRa.read();
+      }
+      
+      Serial.print(F("RX: "));
+      Serial.println(received);
+      
+      // Parse incoming message
+      unsigned long msgId;
+      String errorType;
+      int msgType = parseIncomingMessage(received, &msgId, &errorType);
+      
+      if (msgType == MSG_TYPE_ACK) {
+        if (waitingForAck && msgId == lastMessageId) {
+          Serial.print(F("✓ ACK received for message "));
+          Serial.println(msgId);
+          waitingForAck = false;
+          retryCount = 0;
+          return true; // ACK received
+        } else {
+          Serial.print(F("⚠ Unexpected ACK for message "));
+          Serial.println(msgId);
+        }
+      }
+      else if (msgType == MSG_TYPE_ERROR) {
+        Serial.print(F("❌ ERROR received from Pi5: "));
+        Serial.println(errorType);
+        
+        // If we're waiting for ACK and got an error instead, stop waiting
+        if (waitingForAck) {
+          Serial.println(F("❌ Stopping ACK wait due to format error"));
+          waitingForAck = false;
+          retryCount = 0;
+          return false;
+        }
+      }
+    }
+    delay(10); // Small delay to prevent CPU hogging
+  }
+  
+  return false; // Timeout reached
 }
 
 void setup() {
@@ -352,9 +401,6 @@ void setup() {
 void loop() {
   unsigned long currentTime = millis();
   
-  // Check for incoming messages (ACKs)
-  checkIncomingMessages();
-  
   // Handle ACK timeout and retries
   if (waitingForAck && (currentTime - lastTransmitTime) > ACK_TIMEOUT) {
     Serial.println(F("⚠ ACK timeout"));
@@ -402,6 +448,41 @@ void loop() {
       waitingForAck = true;
       retryCount = 0;
       lastTransmitTime = currentTime;
+      
+      // Wait for ACK with 5 second timeout
+      Serial.println(F("⏰ Waiting for ACK (5s timeout)..."));
+      if (checkIncomingMessages(5000)) {
+        Serial.println(F("✅ Message acknowledged successfully"));
+      } else {
+        Serial.println(F("⏰ ACK timeout - retransmitting immediately"));
+        
+        // Immediate retry on timeout
+        if (retryCount < MAX_RETRIES) {
+          retryCount++;
+          Serial.print(F("🔄 Immediate retry "));
+          Serial.print(retryCount);
+          Serial.print(F("/"));
+          Serial.println(MAX_RETRIES);
+          
+          // Resend immediately
+          LoRa.beginPacket();
+          LoRa.print(lastMessage);
+          LoRa.endPacket(false);
+          
+          // Wait again for ACK
+          if (checkIncomingMessages(5000)) {
+            Serial.println(F("✅ Retry successful - ACK received"));
+            waitingForAck = false;
+            retryCount = 0;
+          } else {
+            Serial.println(F("⏰ Retry also timed out"));
+          }
+        } else {
+          Serial.println(F("❌ Max retries reached"));
+          waitingForAck = false;
+          retryCount = 0;
+        }
+      }
     }
     
     // Display sensor readings
@@ -442,5 +523,8 @@ void loop() {
     Serial.println(F("%"));
   }
   
-  delay(100); // Small delay to prevent flooding
+  // Quick check for any pending messages when not actively waiting
+  if (!waitingForAck) {
+    checkIncomingMessages(100); // Quick 100ms check
+  }
 }
