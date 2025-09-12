@@ -15,10 +15,10 @@
 #define NODE_ID "nano1"
 unsigned long msgCount = 0;
 unsigned long lastSend = 0;
-const unsigned long SEND_INTERVAL = 10000; // 10 seconds
+const unsigned long SEND_INTERVAL = 3000; // 3 seconds - plus fréquent
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
   while (!Serial && millis() < 3000) delay(10);
   
   Serial.println("=== Nano LoRa Test ===");
@@ -31,17 +31,18 @@ void setup() {
     while (1) delay(1000);
   }
   
-  // EXACT same configuration as Pi5
-  LoRa.setTxPower(14);           // Same power
+  // EXACT same configuration as working v3
+  LoRa.setTxPower(14);           
   LoRa.setSpreadingFactor(7);    
-  LoRa.setSignalBandwidth(125E3);
+  LoRa.setSignalBandwidth(125E3); 
   LoRa.setCodingRate4(5);        
   LoRa.setPreambleLength(8);     
   LoRa.setSyncWord(0x12);        
   
-  Serial.println("LoRa configured:");
+  Serial.println("LoRa configured with v3 settings:");
   Serial.println("  Freq: 433MHz, Power: 14dBm");
   Serial.println("  SF: 7, BW: 125kHz, CR: 4/5");
+  Serial.println("  Preamble: 8, Sync: 0x12");
   Serial.println("========================");
 }
 
@@ -108,23 +109,24 @@ void checkForMessages() {
 }
 
 void loop() {
-  // Check for incoming messages
+  // Check for incoming messages quickly
   checkForMessages();
   
-  // Send test message every 10 seconds
+  // Send test message every 3 seconds
   if (millis() - lastSend >= SEND_INTERVAL) {
     lastSend = millis();
+    
+    Serial.println("==================");
     sendTestMessage();
     
-    // Wait a bit for potential ACK
-    Serial.println("Waiting for ACK...");
-    unsigned long ackStart = millis();
-    while (millis() - ackStart < 3000) { // 3 second timeout
+    // Quick check for ACK (no blocking loop)
+    Serial.println("Quick ACK check...");
+    for (int i = 0; i < 10; i++) {
       checkForMessages();
-      delay(50);
+      delay(100); // Wait 100ms x 10 = 1 second total
     }
-    Serial.println("---");
+    Serial.println("==================");
   }
   
-  delay(100);
+  delay(50); // Shorter delay for more responsive checking
 }

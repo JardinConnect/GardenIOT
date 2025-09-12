@@ -320,7 +320,7 @@ bool checkIncomingMessages(unsigned long timeoutMs = 5000) {
 }
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
   while (!Serial && millis() < 3000) {
     delay(10);
   }
