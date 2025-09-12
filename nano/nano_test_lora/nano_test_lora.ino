@@ -53,17 +53,30 @@ void sendTestMessage() {
   
   Serial.print("TX: ");
   Serial.println(message);
+  Serial.print("Length: ");
+  Serial.println(message.length());
   
-  LoRa.beginPacket();
+  // Check LoRa is available
+  if (!LoRa.beginPacket()) {
+    Serial.println("  -> Cannot begin packet");
+    return;
+  }
+  
   LoRa.print(message);
-  int result = LoRa.endPacket();
+  int result = LoRa.endPacket(false); // non-blocking
+  
+  Serial.print("  -> Result: ");
+  Serial.println(result);
   
   if (result == 1) {
     Serial.println("  -> Sent OK");
   } else {
-    Serial.print("  -> Failed: ");
+    Serial.print("  -> Failed with code: ");
     Serial.println(result);
   }
+  
+  // Wait a bit after sending
+  delay(100);
 }
 
 void checkForMessages() {

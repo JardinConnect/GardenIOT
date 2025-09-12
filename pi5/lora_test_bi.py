@@ -66,13 +66,21 @@ while True:
         packet = rfm9x.receive(timeout=1.0)
         
         if packet is not None:
+            # Show raw bytes first
+            print(f"📡 Raw packet ({len(packet)} bytes): {packet}")
+            
             # Decode message
             raw_message = packet.decode("utf-8", errors="ignore").strip()
             rssi = rfm9x.last_rssi
             
-            print(f"📡 RX: {raw_message}")
+            print(f"📡 RX: '{raw_message}'")
             print(f"   RSSI: {rssi} dBm")
             print(f"   Length: {len(raw_message)} chars")
+            
+            # Show each character
+            if len(raw_message) > 0:
+                chars = [f"'{c}'({ord(c)})" for c in raw_message[:10]]  # First 10 chars
+                print(f"   Chars: {' '.join(chars)}")
             
             # Parse message
             parsed = parse_test_message(raw_message)
