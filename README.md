@@ -42,7 +42,7 @@ Structure de réponse avec gestion d'erreurs :
 
 ### Message de type Datas (Type 1)
 ```
-B|1|17778946513|f5io|1B1001TA121TS131HA251HS1002HS95L9|E
+B|1|17778946513|f5io|1B100:1TA12:1TS13:1HA25:1HS100:2HS95:L9|E
 ```
 
 Décomposition :
@@ -50,7 +50,7 @@ Décomposition :
 - `1` : Type de message (Datas)
 - `17778946513` : Timestamp
 - `f5io` : UID du noeud
-- `1B1001TA121TS131HA251HS1002HS95L9` : Données
+- `1B100:1TA12:1TS13:1HA25:1HS100:2HS95:L9` : Données (séparées par `:`)
   - `1B100` : Batterie à 100%
   - `1TA12` : Température Air 12°C
   - `1TS13` : Température Sol 13°C
@@ -91,4 +91,9 @@ Décomposition :
 - Les données sont encodées sur 8 bits
 - Conversion en valeur décimale côté récepteur
 - Communication unidirectionnelle : Pico2W → Pi5
-- Format des données : `1[TYPE][VALEUR]` où le préfixe `1` indique une donnée valide
+- Format des données dans la section DATAS :
+  - Pour messages type 1 : `[ID][TYPE][VALEUR]:[ID][TYPE][VALEUR]:...`
+  - Chaque donnée capteur est séparée par `:`
+  - `[ID]` : Numéro du capteur (1, 2, etc.) - optionnel pour capteurs uniques comme L
+  - `[TYPE]` : Type de capteur (TA, TS, HA, HS, B, L)
+  - `[VALEUR]` : Valeur mesurée
