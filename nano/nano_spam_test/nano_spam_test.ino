@@ -14,9 +14,11 @@
 unsigned long msgCount = 0;
 bool waitingForAck = false;
 unsigned long lastSendTime = 0;
+unsigned long ackWaitStart = 0;     // When we started waiting for ACK
 unsigned long currentMsgId = 0;
 const unsigned long ACK_RETRY_INTERVAL = 1000;  // 1 second retry
 const unsigned long NORMAL_INTERVAL = 10000;    // 10 seconds normal
+const unsigned long ACK_TIMEOUT = 5000;         // 5 seconds timeout for ACK
 
 void setup() {
   Serial.begin(115200);
@@ -44,8 +46,14 @@ void setup() {
   Serial.println("  Freq: 433MHz, Power: 14dBm");
   Serial.println("  SF: 7, BW: 125kHz, CR: 4/5");
   Serial.println("  Preamble: 8, Sync: 0x12");
-  Serial.println("Starting SPAM...");
+  Serial.println("Starting smart ACK test...");
+  Serial.println("- New messages every 10s");
+  Serial.println("- Retries every 1s until ACK");
   Serial.println("====================");
+  
+  // Initialize timing
+  lastSendTime = millis();
+  waitingForAck = false;
 }
 
 void sendMessage() {
@@ -86,52 +94,79 @@ void checkForAck() {
       }
     }
     
-    Serial.print("RX: ");
-    Serial.println(received);
+    Serial.print("RX: '");
+    Serial.print(received);
+    Serial.print("' (");
+    Serial.print(received.length());
+    Serial.println(" chars)");
     
     // Check if it's ACK for current message: ACK|msgId|nano1
     String expectedAck = String("ACK|") + String(currentMsgId) + String("|nano1");
+    Serial.print("  Expected: '");
+    Serial.print(expectedAck);
+    Serial.println("'");
+    
     if (received == expectedAck) {
       Serial.println("  ✓ ACK received! Next message in 10 seconds");
       waitingForAck = false;
+      ackWaitStart = 0;  // Reset timeout
     } else {
-      Serial.println("  ⚠ Unknown or wrong ACK");
+      Serial.println("  ⚠ ACK mismatch or unknown message");
     }
   }
 }
 
 void loop() {
-  // Always check for incoming ACKs
+  unsigned long currentTime = millis();
+  
+  // Always check for ACKs
   checkForAck();
   
-  unsigned long currentTime = millis();
+  // TIMEOUT CHECK: Reset waitingForAck if no ACK received in time
+  if (waitingForAck && (currentTime - ackWaitStart) > ACK_TIMEOUT) {
+    Serial.println("⏰ ACK timeout - giving up, sending new message");
+    waitingForAck = false;
+    ackWaitStart = 0;
+  }
+  
+  // Send timing logic
   unsigned long interval = waitingForAck ? ACK_RETRY_INTERVAL : NORMAL_INTERVAL;
   
-  // Send message based on current state
   if (currentTime - lastSendTime >= interval) {
-    if (waitingForAck) {
-      Serial.print("⚠ ACK timeout - retry #");
-      Serial.println(msgCount);
-      
-      // Resend same message (don't increment msgCount)
-      String msg = String("XXXXTEST|") + String(currentMsgId) + String("|nano1");
-      
-      Serial.print("RETRY: ");
-      Serial.println(msg);
-      
-      LoRa.beginPacket();
-      LoRa.print(msg);
-      int result = LoRa.endPacket();
-      
-      Serial.print("  Result: ");
-      Serial.println(result);
-      
-      lastSendTime = currentTime;
+    // Decide what to send
+    if (!waitingForAck) {
+      // New message
+      msgCount++;
+      currentMsgId = msgCount;
+      Serial.print("TX #");
     } else {
-      // Send new message
-      sendMessage();
+      // Retry same message
+      Serial.print("RETRY #");
+    }
+    
+    String msg = String("XXXXTEST|") + String(currentMsgId) + String("|nano1");
+    Serial.print(currentMsgId);
+    Serial.print(": ");
+    Serial.println(msg);
+    
+    // Send message
+    LoRa.beginPacket();
+    LoRa.print(msg);
+    int result = LoRa.endPacket();
+    
+    Serial.print("  Result: ");
+    Serial.println(result);
+    
+    if (result == 1) {
+      if (!waitingForAck) {
+        // First time sending this message
+        waitingForAck = true;
+        ackWaitStart = currentTime;  // Start timeout counter
+        Serial.println("  Waiting for ACK...");
+      }
+      lastSendTime = currentTime;
     }
   }
   
-  delay(50); // Small delay for responsiveness
+  delay(50);
 }
