@@ -43,7 +43,7 @@ while True:
         humidite_sol = lm393_sensor.read_humidity()
         temp_sol = ds18b20_sensor.read_temp()
 
-        datas = lux + temp_air + humidite_air + humidite_sol + temp_sol
+        datas = lux + ':' + temp_air + ':' + humidite_air + ':' + humidite_sol + ':' + temp_sol
         type = 1
         timestamps = time()
         uid = 1234
