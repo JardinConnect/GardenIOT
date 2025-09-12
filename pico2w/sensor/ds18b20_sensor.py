@@ -148,35 +148,6 @@ class DS18B20Sensor:
             print(f"Erreur lecture capteur {index}: {e}")
             return None
     
-    def get_temperature_description(self, temp_value=None):
-        """
-        Retourne une description textuelle de la température
-        
-        Args:
-            temp_value (float): Valeur de température (si None, lit automatiquement)
-            
-        Returns:
-            str: Description de la température
-        """
-        if temp_value is None:
-            temp_value = self.read_temperature()
-        
-        if temp_value is None:
-            return "Erreur de lecture"
-        
-        if temp_value < 0:
-            return "Très froid"
-        elif temp_value < 10:
-            return "Froid"
-        elif temp_value < 20:
-            return "Frais"
-        elif temp_value < 25:
-            return "Température ambiante"
-        elif temp_value < 30:
-            return "Chaud"
-        else:
-            return "Très chaud"
-    
     def get_rom_addresses(self):
         """
         Retourne les adresses ROM de tous les capteurs détectés
