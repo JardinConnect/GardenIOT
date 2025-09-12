@@ -134,5 +134,5 @@ void loop() {
   count++;
   
   // Wait 5 seconds
-  delay(5000);
+  delay(1000);
 }
