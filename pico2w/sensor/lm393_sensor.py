@@ -41,23 +41,7 @@ class LM393Sensor:
             int: Valeur brute du capteur (0-65535)
         """
         return self.adc.read_u16()
-    
-    def read_digital(self):
-        """
-        Lit la valeur numérique du capteur (sec/humide)
-        
-        Returns:
-            bool: True si le sol est humide, False sinon
-        """
-        if self.digital_pin:
-            # La sortie est généralement LOW (0) quand le sol est humide
-            return not bool(self.digital_pin.value())
-        else:
-            # Si pas de broche numérique configurée, utiliser l'analogique avec un seuil
-            raw = self.read_raw()
-            threshold = (self.dry_value + self.wet_value) // 2
-            return raw < threshold
-    
+
     def read_percent(self):
         """
         Lit l'humidité du sol en pourcentage
@@ -65,9 +49,6 @@ class LM393Sensor:
         Returns:
             float: Pourcentage d'humidité (0-100%)
         """
-        if self.use_digital:
-            return 100 if self.read_digital() else 0
-        
         raw = self.read_raw()
         
         # Protection contre division par zéro
@@ -81,8 +62,8 @@ class LM393Sensor:
         # Limiter entre 0 et 100%
         return max(0, min(100, percent))
 
-    def read_temps_sol(self):
-        return {"TS": self.read_percent()}
+    def read_humidity(self):
+        return {"HS": self.read_percent()}
 
 # Exemple d'utilisation si ce fichier est exécuté directement
 if __name__ == "__main__":
@@ -99,11 +80,9 @@ if __name__ == "__main__":
         while True:
             raw = sensor.read_raw()
             percent = sensor.read_percent()
-            is_wet = sensor.read_digital()
             
             print(f"Valeur brute: {raw}")
             print(f"Humidité: {percent:.1f}%")
-            print(f"État: {'Humide' if is_wet else 'Sec'}")
             print("-" * 20)
             
             time.sleep(2)
