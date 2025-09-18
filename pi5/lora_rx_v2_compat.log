@@ -1,0 +1,15 @@
+2025-09-12 11:32:07,767 - INFO - Database initialized successfully
+2025-09-12 11:32:07,767 - INFO - 📡 LoRa Receiver v2.1 - Backward Compatible Ready
+2025-09-12 11:32:07,767 - INFO - 📡 Supports: v2 (B|...) and v3 (XXXXB|...|MsgId|...) formats
+2025-09-12 11:32:07,768 - INFO - 📡 ACK Support: Enabled
+2025-09-12 11:32:07,768 - INFO - 📡 Waiting for LoRa packets...
+2025-09-12 11:32:42,049 - INFO - 📡 Raw: B|1|1757676754|nano1|1|1B100:1TA23:1TS23:1HA73:1HS44:1L46|E
+2025-09-12 11:32:42,050 - WARNING - Invalid sensor value: 1L46
+2025-09-12 11:32:42,059 - INFO - 📥 Data message from nano1 (format: v3)
+2025-09-12 11:32:42,059 - INFO -    📊 Message ID: 1
+2025-09-12 11:32:42,059 - INFO -    📶 RSSI: -41 dBm
+2025-09-12 11:32:42,059 - WARNING - Invalid sensor value: 1L46
+2025-09-12 11:32:42,059 - INFO -    🌡️  Sensor readings:
+2025-09-12 11:32:42,059 - INFO - 📤 Sending ACK: XXXXB|2|1757669562|pi5|1||E
+2025-09-12 11:32:42,132 - INFO - ✅ ACK sent successfully
+2025-09-12 11:35:19,189 - INFO - 🛑 Receiver stopped by user
