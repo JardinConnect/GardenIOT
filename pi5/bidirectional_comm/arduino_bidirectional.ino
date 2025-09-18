@@ -22,7 +22,7 @@ void setup() {
   // Setup LoRa
   LoRa.setPins(NSS_PIN, RST_PIN, DIO0_PIN);
 
-  if (!LoRa.begin(915E6)) {
+  if (!LoRa.begin(433E6)) {  // Changed to 433 MHz to match Pi
     Serial.println("LoRa init failed!");
     while (1);
   }
@@ -64,7 +64,7 @@ void loop() {
 
     LoRa.beginPacket();
     LoRa.print(message);
-    LoRa.endPacket();
+    LoRa.endPacket(false);  // Use non-blocking mode to prevent freezing
 
     Serial.print("Sent: ");
     Serial.println(message);

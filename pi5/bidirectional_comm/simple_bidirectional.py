@@ -8,10 +8,10 @@ import adafruit_rfm9x
 
 # Setup LoRa
 spi = busio.SPI(board.SCK, MOSI=board.MOSI, MISO=board.MISO)
-cs = digitalio.DigitalInOut(board.CE1)
+cs = digitalio.DigitalInOut(board.D5)  # Using GPIO5 (same as working config)
 reset = digitalio.DigitalInOut(board.D25)
 
-rfm9x = adafruit_rfm9x.RFM9x(spi, cs, reset, frequency=915.0)
+rfm9x = adafruit_rfm9x.RFM9x(spi, cs, reset, frequency=433.0)
 rfm9x.tx_power = 23
 
 print("LoRa Bidirectional Communication Started")
