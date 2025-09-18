@@ -27,7 +27,9 @@ void setup() {
     while (1);
   }
 
-  LoRa.setTxPower(20);
+  LoRa.setTxPower(14);  // Match nano settings
+  LoRa.setSpreadingFactor(7);  // Match nano settings
+  LoRa.setSignalBandwidth(125E3);  // 125kHz to match nano
   Serial.println("LoRa initialized successfully");
   Serial.println("Starting: Send -> Receive (2s) -> Send -> Receive (2s)...");
 }

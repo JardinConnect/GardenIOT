@@ -12,18 +12,20 @@ cs = digitalio.DigitalInOut(board.D5)  # Using GPIO5 (same as working config)
 reset = digitalio.DigitalInOut(board.D25)
 
 rfm9x = adafruit_rfm9x.RFM9x(spi, cs, reset, frequency=433.0)
-rfm9x.tx_power = 23
+rfm9x.tx_power = 14  # Match nano settings
+rfm9x.spreading_factor = 7  # Match nano settings
+rfm9x.signal_bandwidth = 125000  # 125kHz to match nano
 
 print("LoRa Bidirectional Communication Started")
-print("Alternating: Receive (2s) -> Send -> Receive (2s) -> Send...")
+print("Alternating: Receive (10s) -> Send -> Receive (10s) -> Send...")
 
 message_count = 0
 
 while True:
-    # RECEIVE MODE - Listen for 2 seconds
+    # RECEIVE MODE - Listen for 10 seconds
     print("\n--- RECEIVE MODE ---")
     start_time = time.time()
-    while time.time() - start_time < 2.0:
+    while time.time() - start_time < 10.0:
         packet = rfm9x.receive(timeout=0.5)
         if packet:
             try:

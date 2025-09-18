@@ -109,7 +109,7 @@ class BidirectionalLoRa:
         self.rfm9x.send(ack_bytes)
         logger.debug(f"Sent ACK for message #{msg_id}")
 
-    def alternate_communication(self, interval=2.0):
+    def alternate_communication(self, interval=10.0):
         """Alternate between sending and receiving"""
         mode = "receive"  # Start with receive mode
 
