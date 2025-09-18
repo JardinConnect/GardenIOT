@@ -22,7 +22,7 @@
 
 // Timing
 unsigned long lastSendTime = 0;
-unsigned long sendInterval = 5000;  // Send every 5 seconds
+unsigned long sendInterval = 500;  // Send every 5 seconds
 unsigned long msgCount = 0;
 
 void setup() {

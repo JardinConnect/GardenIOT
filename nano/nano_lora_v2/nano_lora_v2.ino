@@ -48,7 +48,7 @@ DallasTemperature ds18b20(&oneWire);
 
 // === Variables ===
 unsigned long lastSendTime = 0;
-const unsigned long SEND_INTERVAL = 5000; // Send every 30 seconds
+const unsigned long SEND_INTERVAL = 500; // Send every seconds
 bool hasRTC = false;
 bool hasDS18B20 = false;
 
