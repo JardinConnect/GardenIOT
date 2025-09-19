@@ -51,36 +51,22 @@ void loop() {
     Serial.print("Sent: ");
     Serial.println(message.substring(4));
 
-    // Switch to receive mode for 10 seconds (give Pi time to receive and send back)
+    // Switch to receive mode for 2 seconds (give Pi time to receive and send back)
     sendMode = false;
     lastAction = currentTime;
     packetsReceived = 0;
-    Serial.println("Listening for 10 seconds...");
-
-    // Petite pause pour permettre la réception
-    delay(100);
+    Serial.println("Listening for 2 seconds...");
 
   } else {
-    // RECEIVE MODE - Listen for 10 seconds
-    if (currentTime - lastAction < 10000) {
+    // RECEIVE MODE - Listen for 12 seconds
+    if (currentTime - lastAction < 2000) {
       int packetSize = LoRa.parsePacket();
       if (packetSize) {
         packetsReceived++;
         String message = "";
-
-        // Lire tous les bytes disponibles
-        int rssi = LoRa.packetRssi();
         while (LoRa.available()) {
-          char c = (char)LoRa.read();
-          message += c;
+          message += (char)LoRa.read();
         }
-
-        // Debug: afficher le message brut
-        Serial.print("RAW: '");
-        Serial.print(message);
-        Serial.print("' (len=");
-        Serial.print(message.length());
-        Serial.println(")");
 
         if (message.startsWith("XXXX")) {
           message = message.substring(4);
@@ -89,11 +75,11 @@ void loop() {
         Serial.print("Received: ");
         Serial.print(message);
         Serial.print(" (RSSI: ");
-        Serial.print(rssi);
+        Serial.print(LoRa.packetRssi());
         Serial.println(")");
       }
     } else {
-      // 10 seconds up, switch back to send mode
+      // 12 seconds up, switch back to send mode
       if (packetsReceived == 0) {
         Serial.println("No reply received");
       }
