@@ -49,23 +49,17 @@ class SensorManager:
         return (0, 0)
     
     def _luminosite(self):
-        """Luminosité convertie en niveau 1-9"""
+        """Retourne la luminosité réelle en Lux"""
         try:
+            # On récupère la valeur brute du capteur
             lux = self.lux.read_luminance()
-            if not lux:
-                return 1
             
-            if lux < 10: return 1
-            elif lux < 50: return 2
-            elif lux < 100: return 3
-            elif lux < 200: return 4
-            elif lux < 500: return 5
-            elif lux < 1000: return 6
-            elif lux < 5000: return 7
-            elif lux < 10000: return 8
-            else: return 9
-        except:
-            return 1
+            # Si on a une valeur, on l'arrondit à l'entier, sinon 0
+            return int(round(lux)) if lux is not None else 0
+            
+        except Exception as e:
+            print(f"Erreur lecture Lux: {e}")
+            return 0
     
     def _humidite_sol(self):
         """Humidité sol (LM393)"""
