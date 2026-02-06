@@ -1,0 +1,94 @@
+{
+  "device": {
+    "uid": "auto",
+    "parent_id": null,
+    "send_interval": 60,
+    "listen_timeout": 5000
+  },
+
+  "lora": {
+    "frequency": 433.1,
+    "spreading_factor": 10,
+    "bandwidth": 500000,
+    "coding_rate": 5,
+    "tx_power": 14,
+    "sync_word": "0x12",
+    "pins": {
+      "sck": 18,
+      "miso": 19,
+      "mosi": 23,
+      "cs": 5,
+      "rst": 14,
+      "irq": 26
+    }
+  },
+
+  "i2c": {
+    "id": 0,
+    "sda": 21,
+    "scl": 22,
+    "freq": 400000
+  },
+
+  "sensors": [
+    {
+      "type": "dht22",
+      "name": "air",
+      "enabled": true,
+      "pin": 27,
+      "code": "TA",
+      "metrics": ["temperature", "humidity"],
+      "codes": { "temperature": "TA", "humidity": "HA" },
+      "retry": 3,
+      "delay_ms": 2000,
+      "alerts": {
+        "temperature": { "min": 0, "max": 45 },
+        "humidity": { "min": 20, "max": 90 }
+      }
+    },
+    {
+      "type": "ds18b20",
+      "name": "sol_temp",
+      "enabled": true,
+      "pin": 4,
+      "codes": { "temperature": "TS" },
+      "alerts": {
+        "temperature": { "min": -10, "max": 50 }
+      }
+    },
+    {
+      "type": "bh1750",
+      "name": "luminosity",
+      "enabled": true,
+      "bus": "i2c",
+      "codes": { "luminosity": "L" },
+      "alerts": {
+        "luminosity": { "min": 2, "max": null }
+      }
+    },
+    {
+      "type": "lm393",
+      "name": "sol_humidity",
+      "enabled": true,
+      "pin": 35,
+      "codes": { "soil_moisture": "HS" },
+      "params": {
+        "dry_value": 3500,
+        "wet_value": 900
+      },
+      "alerts": {
+        "soil_moisture": { "min": 30, "max": null }
+      }
+    }
+  ],
+
+  "pairing": {
+    "timeout_ms": 5000,
+    "button_pin": 13
+  },
+
+  "power": {
+    "sleep_interval": 15,
+    "reset_duration_ms": 10000
+  }
+}
