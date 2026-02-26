@@ -61,10 +61,15 @@ class AlertManager:
         Callback triggered when a sensor publishes data via EventBus.
         
         Args:
-            data: { 'sensor': 'air', 'data': { 'temperature': 35.2, 'humidity': 80 } }
+            data: { 'sensor': 'air', 'data': SensorData.to_dict() }
         """
         sensor_name = data.get('sensor')
-        readings = data.get('data', {})
+        sensor_data = data.get('data', {})
+        
+        # Extract readings from DTO format
+        readings = {}
+        for reading in sensor_data.get('readings', []):
+            readings[reading['metric']] = reading['value']
         
         # Get thresholds for this sensor
         sensor_thresholds = self._thresholds.get(sensor_name, {})

@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": ".."
+		},
+		{
+			"name": "iot esp32",
+			"path": "."
+		}
+	],
+	"settings": {
+		"python.languageServer": "None"
+	}
+}
