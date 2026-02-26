@@ -1,7 +1,7 @@
 from machine import Pin, ADC
 import time
 
-class SoilMoistureSensor:
+class LM393Sensor:
     def __init__(self, analog_pin=26, digital_pin=16, use_digital=False):
         """
         Initialise le capteur d'humidité du sol LM393
@@ -41,23 +41,7 @@ class SoilMoistureSensor:
             int: Valeur brute du capteur (0-65535)
         """
         return self.adc.read_u16()
-    
-    def read_digital(self):
-        """
-        Lit la valeur numérique du capteur (sec/humide)
-        
-        Returns:
-            bool: True si le sol est humide, False sinon
-        """
-        if self.digital_pin:
-            # La sortie est généralement LOW (0) quand le sol est humide
-            return not bool(self.digital_pin.value())
-        else:
-            # Si pas de broche numérique configurée, utiliser l'analogique avec un seuil
-            raw = self.read_raw()
-            threshold = (self.dry_value + self.wet_value) // 2
-            return raw < threshold
-    
+
     def read_percent(self):
         """
         Lit l'humidité du sol en pourcentage
@@ -65,9 +49,6 @@ class SoilMoistureSensor:
         Returns:
             float: Pourcentage d'humidité (0-100%)
         """
-        if self.use_digital:
-            return 100 if self.read_digital() else 0
-        
         raw = self.read_raw()
         
         # Protection contre division par zéro
@@ -81,10 +62,13 @@ class SoilMoistureSensor:
         # Limiter entre 0 et 100%
         return max(0, min(100, percent))
 
+    def read_humidity(self):
+        return {"HS": self.read_percent()}
+
 # Exemple d'utilisation si ce fichier est exécuté directement
 if __name__ == "__main__":
     # Créer une instance du capteur sur la broche ADC0 (GPIO 26)
-    sensor = SoilMoistureSensor(analog_pin=26)
+    sensor = LM393Sensor(analog_pin=26)
     
     # Calibration optionnelle (à faire avec le capteur dans l'air puis dans l'eau)
     # sensor.calibrate(dry_value=65000, wet_value=20000)
@@ -96,11 +80,9 @@ if __name__ == "__main__":
         while True:
             raw = sensor.read_raw()
             percent = sensor.read_percent()
-            is_wet = sensor.read_digital()
             
             print(f"Valeur brute: {raw}")
             print(f"Humidité: {percent:.1f}%")
-            print(f"État: {'Humide' if is_wet else 'Sec'}")
             print("-" * 20)
             
             time.sleep(2)

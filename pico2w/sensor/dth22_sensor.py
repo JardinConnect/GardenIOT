@@ -14,6 +14,10 @@ class DTH22Sensor:
     def read_humidity(self):
         self.dht.measure()
         return self.dht.humidity()
+    
+    def read_temp_humidity(self):
+        self.dht.measure()
+        return {"TA": self.dht.temperature(), "HA": self.dht.humidity()}
 
 if __name__ == "__main__":
     sensor = DTH22Sensor(pin=2)
