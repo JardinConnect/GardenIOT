@@ -36,8 +36,6 @@
       "name": "air",
       "enabled": true,
       "pin": 27,
-      "code": "TA",
-      "metrics": ["temperature", "humidity"],
       "codes": { "temperature": "TA", "humidity": "HA" },
       "retry": 3,
       "delay_ms": 2000,

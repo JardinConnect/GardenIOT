@@ -14,7 +14,7 @@ main.py → DeviceManager (Façade) → [ConfigManager, SensorManager, Communica
 
 ### Nouveaux Fichiers
 1. **`src/core/state_manager.py`** - Gestionnaire d'états dédié
-2. **`src/core/device_manager_complete.py`** - Façade complète
+2. **`src/core/device_manager.py`** - Façade complète
 3. **`src/main.py`** - Point d'entrée simplifié
 4. **`test_facade.py`** - Tests de la façade
 
@@ -98,7 +98,7 @@ while True:
     # Logique complexe...
 
 # Après (simple)
-from core.device_manager_complete import DeviceManager
+from core.device_manager import DeviceManager
 
 device = DeviceManager()
 device.initialize()
@@ -149,7 +149,7 @@ device.run()
 
 ### Mode Normal
 ```python
-from core.device_manager_complete import DeviceManager
+from core.device_manager import DeviceManager
 
 device = DeviceManager(config_path="config/config.json")
 device.initialize()
@@ -158,7 +158,7 @@ device.run()  # Lance la machine à états
 
 ### Mode Test
 ```python
-from core.device_manager_complete import DeviceManager
+from core.device_manager import DeviceManager
 
 device = DeviceManager(config_path="config/config.json")
 device.initialize()
