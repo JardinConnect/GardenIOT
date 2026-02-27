@@ -1,18 +1,20 @@
 """
-Device Manager - Façade Pattern
-Simple orchestration layer for the entire IoT system.
-Delegates to specialized managers (Hardware, Sensors, Communication).
+Device Manager - Complete Façade Implementation
+Simple orchestration layer for the entire IoT system following the documented data flow.
 """
 
 from config.config_manager import ConfigManager
 from core.hardware_manager import HardwareManager
 from core.sensor_manager import SensorManager
+from core.communication_manager import CommunicationManager
 from core.event_bus import EventBus
+from core.state_manager import StateManager
 from core.states import BootState
 from managers.alert_manager import AlertManager
-from communication.communication_manager import CommunicationManager
 from communication.lora_protocol import LoRaProtocol
+from communication.wifi_protocol import WiFiProtocol
 import time
+import gc
 
 
 class DeviceManager:
@@ -239,19 +241,33 @@ class DeviceManager:
     def _format_sensor_data(self, sensor_data):
         """
         Format sensor data for transmission.
-        Format: "metric_code:value,metric_code:value,..."
+        Uses SensorData DTO compact format for LoRa communication.
         """
-        data_parts = []
+        # sensor_data is now a dict of {sensor_name: SensorData.to_dict()}
+        compact_parts = []
         
-        for sensor_name, metrics in sensor_data.items():
-            sensor_config = self._get_sensor_config(sensor_name)
-            codes = sensor_config.get('codes', {})
+        for sensor_name, sensor_dict in sensor_data.items():
+            # Create SensorData DTO from dict
+            from models.sensor_data import SensorData
+            dto = SensorData(sensor_dict['sensor'], sensor_dict['type'])
             
-            for metric_name, value in metrics.items():
-                code = codes.get(metric_name, metric_name[:2].upper())
-                data_parts.append(f"{code}:{value}")
+            # Add readings from dict
+            for reading in sensor_dict.get('readings', []):
+                dto.add_reading(reading['metric'], reading['value'], reading['unit'])
+            
+            # Use compact format for LoRa
+            compact_data = dto.to_compact()
+            
+            # Format as "code:value,code:value,..."
+            parts = []
+            for code, value in compact_data.items():
+                if code not in ['s', 't']:  # Skip sensor name and timestamp
+                    parts.append(f"{code}:{value}")
+            
+            if parts:
+                compact_parts.extend(parts)
         
-        return ",".join(data_parts)
+        return ",".join(compact_parts)
     
     def _get_sensor_config(self, sensor_name):
         """Get config for a specific sensor by name"""

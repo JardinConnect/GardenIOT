@@ -1,4 +1,5 @@
 import time
+from models.sensor_data import SensorData
 
 class BaseSensor:
     def __init__(self, name, pin=None, **kwargs):
@@ -8,11 +9,13 @@ class BaseSensor:
         self._last_read_time = 0
         self._read_interval = kwargs.get('read_interval', 2)
         self._error_count = 0
+        self._max_errors = kwargs.get('max_errors', 5)
 
     def read(self, force=False):
         """Template Method : ne pas surcharger"""
         if not force and not self._should_read():
             return self._last_reading
+        
         try:
             raw_data = self._read_raw()
         except Exception as e:
@@ -30,10 +33,13 @@ class BaseSensor:
             print(f"  ✗ [{self.name}] Invalid data ({self._error_count}x): {raw_data}")
             return self._last_reading
 
+        # Create DTO with sensor data
+        dto = self._create_dto(raw_data)
+        
         self._error_count = 0
-        self._last_reading = {'sensor': self.name, 'data': raw_data}
+        self._last_reading = dto
         self._last_read_time = time.time()
-        return self._last_reading
+        return dto
 
     def _read_raw(self):
         raise NotImplementedError
@@ -41,5 +47,32 @@ class BaseSensor:
     def _validate(self, data):
         raise NotImplementedError
 
+    def _create_dto(self, raw_data):
+        """Create SensorData DTO from raw data."""
+        dto = SensorData(self.name, self.__class__.__name__)
+        
+        for metric, value in raw_data.items():
+            # Try to determine unit based on metric name
+            unit = self._get_unit_for_metric(metric)
+            dto.add_reading(metric, value, unit)
+        
+        return dto
+
+    def _get_unit_for_metric(self, metric):
+        """Determine unit based on metric name."""
+        units = {
+            'temperature': '°C',
+            'humidity': '%',
+            'luminance': 'lux',
+            'luminosity': 'lux',
+            'soil_moisture': '%',
+            'pressure': 'hPa'
+        }
+        return units.get(metric, '')
+
     def _should_read(self):
         return (time.time() - self._last_read_time) >= self._read_interval
+
+    def is_healthy(self):
+        """Check if sensor is functioning properly."""
+        return self._error_count < self._max_errors

@@ -92,15 +92,15 @@ class SensorManager:
         
         for name, sensor in self.sensors.items():
             try:
-                data = sensor.read()
+                dto = sensor.read()
                 
-                if data:
-                    results[name] = data
+                if dto and dto.is_valid:
+                    results[name] = dto.to_dict()
                     
                     # Publish sensor data event (Observer Pattern)
                     self.event_bus.publish('sensor.data', {
                         'sensor': name,
-                        'data': data
+                        'data': dto.to_dict()
                     })
                 
             except Exception as e:
