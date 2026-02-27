@@ -1,0 +1,4 @@
+# Dépendances pour le système Gateway Pi5
+paho-mqtt>=1.6.1
+adafruit-circuitpython-rfm9x>=2.2.0
+RPi.GPIO>=0.7.1
