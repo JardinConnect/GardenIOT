@@ -1,4 +1,4 @@
-#!/home/mderoir/lora_project/lora_env/bin/python3
+#!/home/admin/Documents/GardenIOT/pi5/lora_env/bin/python3
 
 """Simple Python serial terminal
 """

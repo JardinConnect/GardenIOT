@@ -1,4 +1,4 @@
-#!/home/mderoir/lora_project/lora_env/bin/python3
+#!/home/admin/Documents/GardenIOT/pi5/lora_env/bin/python3
 
 # Copyright (c) 2019-2024, Emmanuel Blot <emmanuel.blot@free.fr>
 # All rights reserved.
