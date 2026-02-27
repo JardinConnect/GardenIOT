@@ -64,27 +64,32 @@ class SensorData:
             'error': self.error
         }
     
-    def to_compact(self):
+    def to_compact(self, codes=None):
         """
         Convert to compact format (for LoRa communication).
-        Uses short codes to minimize payload size.
+        Requires codes dictionary to be provided.
+
+        Args:
+            codes: dict mapping metric names to short codes
+                e.g., {'temperature': 'TA', 'humidity': 'HA'}
+
+        Returns:
+            dict: compact data format
+
+        Raises:
+            ValueError: if codes are not provided or incomplete
         """
-        # Default codes if not provided
-        default_codes = {
-            'temperature': 'T',
-            'humidity': 'H',
-            'luminance': 'L',
-            'luminosity': 'L',
-            'soil_moisture': 'SM',
-            'pressure': 'P'
-        }
-        
+        if not codes:
+            raise ValueError("Sensor codes must be provided for compact format")
+
         compact_data = {'s': self.sensor_name, 't': int(self.timestamp)}
-        
+
         for reading in self.readings:
-            code = default_codes.get(reading.metric, reading.metric[:2].upper())
-            compact_data[code] = reading.value
-        
+            metric_code = codes.get(reading.metric)
+            if not metric_code:
+                raise ValueError(f"No code defined for metric: {reading.metric}")
+            compact_data[metric_code] = reading.value
+
         return compact_data
     
     def __repr__(self):

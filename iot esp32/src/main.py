@@ -4,7 +4,7 @@ Main entry point - Uses DeviceManager façade.
 This is the complete implementation using the Façade Pattern.
 """
 
-from core.device_manager_complete import DeviceManager
+from core.device_manager import DeviceManager
 import sys
 import os
 

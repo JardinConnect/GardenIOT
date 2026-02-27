@@ -100,3 +100,31 @@ class ConfigManager:
             print(f"[ConfigManager] ✓ Configuration saved to {config_path}")
         except Exception as e:
             print(f"[ConfigManager] ✗ Error saving config: {e}")
+
+    def get_sensor_codes(self, sensor_name):
+        """
+        Get sensor codes for a specific sensor.
+
+        Args:
+            sensor_name: name of the sensor
+
+        Returns:
+            dict: codes mapping (e.g., {'temperature': 'TA', 'humidity': 'HA'})
+
+        Raises:
+            ValueError: if sensor is enabled but has no codes
+        """
+        sensors = self.get('sensors', [])
+
+        for sensor in sensors:
+            if sensor.get('name') == sensor_name:
+                codes = sensor.get('codes', {})
+
+                if sensor.get('enabled', False) and not codes:
+                    raise ValueError(
+                        f"Sensor '{sensor_name}' is enabled but has no codes defined"
+                    )
+
+                return codes
+
+        return {}

@@ -15,7 +15,7 @@ def test_facade_initialization():
     print("Testing DeviceManager façade initialization...")
     
     try:
-        from core.device_manager_complete import DeviceManager
+        from core.device_manager import DeviceManager
         
         # Create device manager
         device = DeviceManager(config_path="src/config/config.json")
@@ -46,7 +46,7 @@ def test_facade_methods():
     print("\nTesting DeviceManager façade methods...")
     
     try:
-        from core.device_manager_complete import DeviceManager
+        from core.device_manager import DeviceManager
         
         device = DeviceManager(config_path="src/config/config.json")
         device.initialize()
@@ -74,7 +74,7 @@ def test_state_manager():
     print("\nTesting StateManager integration...")
     
     try:
-        from core.device_manager_complete import DeviceManager
+        from core.device_manager import DeviceManager
         from core.states import BootState
         
         device = DeviceManager(config_path="src/config/config.json")
