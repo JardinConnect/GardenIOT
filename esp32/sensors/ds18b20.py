@@ -4,7 +4,7 @@ import ds18x20
 import time
 
 class DS18B20Sensor:
-    def __init__(self, pin=4):
+    def __init__(self, pin):
         """
         Initialise le capteur DS18B20 sur la broche spécifiée
         
