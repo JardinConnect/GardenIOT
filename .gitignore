@@ -1,3 +1,12 @@
 */.vscode
 /.vscode
 /exemple_*
+
+# Env virtuels et cache Python (partout dans le repo)
+**/lora_env/
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.db
+.env
+*.log

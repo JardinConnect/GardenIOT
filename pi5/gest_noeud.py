@@ -53,7 +53,7 @@ def add_child(idChild):
             print(f"{idChild} déjà connu")
             return False
     
-    # Ajouter un nouvel enfant
+    # Ajout d'un nouvel enfant
     newChild = {
         "id": idChild,
         "date": str(datetime.now())
@@ -61,7 +61,7 @@ def add_child(idChild):
     data["children"].append(newChild)
     
     save_nodes(data)
-    print(f"✅ [DB] {idChild} ajouté")
+    print(f"[DB] {idChild} ajouté")
     return True
 
 def get_parent_id():
@@ -93,7 +93,7 @@ def remove_child(child_uid):
         if child_id == child_uid:
             data["children"].pop(i)
             save_nodes(data)
-            print(f"🗑️ [DB] {child_uid} supprimé")
+            print(f"[DB] {child_uid} supprimé")
             return True
     
     print(f"{child_uid} introuvable")
