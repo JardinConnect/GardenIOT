@@ -77,12 +77,9 @@ class PairingManager:
     
     def lancer_unpairing(self, construire_msg):
         """
-        Lance l'unpair avec la gateway
-        
-        Args:
-            construire_msg: Fonction(type, datas) -> message string
+        Lance l'unpair
         """
-        print("\n👋 UNPAIR...")
+        print("\nUNPAIR...")
         msg = construire_msg("U", "")
         self._envoyer(msg)
         self._effacer()
@@ -91,11 +88,6 @@ class PairingManager:
         """
         Vérifie si un message est un ordre UNPAIR pour cet ESP32
         
-        Args:
-            parsed_msg: Message parsé (dict)
-        
-        Returns:
-            bool: True si ordre UNPAIR pour cet ESP32
         """
         if not parsed_msg or parsed_msg.get("type") != "U":
             return False
@@ -106,7 +98,7 @@ class PairingManager:
     def _envoyer(self, message):
         """Envoie un message en rafale (3x)"""
         payload = message.encode('utf-8')
-        print(f"📤", end="")
+        print(f"", end="")
         for i in range(3):
             self.lora.send(payload)
             time.sleep(0.1)
