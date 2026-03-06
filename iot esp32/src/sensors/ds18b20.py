@@ -21,11 +21,11 @@ class DS18B20Sensor(BaseSensor):
         self.roms = self.ds.scan()
         
         if not self.roms:
-            print("⚠️ Aucun capteur détecté — vérifie ton câblage et la résistance pull-up.")
+            print("No DS18B20 sensors found on pin {}".format(pin))
     
     def _read_raw(self):
         if not self.roms:
-            print("⚠️ Aucun capteur trouvé.")
+            print("No DS18B20 sensors found, cannot read temperature.")
             return []
         
         # Conversion de température (attendre que le capteur mesure)
@@ -37,7 +37,7 @@ class DS18B20Sensor(BaseSensor):
     
     def _read_raws(self):
         if not self.roms:
-            print("⚠️ Aucun capteur trouvé.")
+            print("No DS18B20 sensors found, cannot read temperature.")
             return None        
         self.ds.convert_temp()
         time.sleep_ms(750)

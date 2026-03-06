@@ -25,7 +25,7 @@ class StateManager:
         self.current_state = new_state
         self.current_state.enter(self.device_manager)
 
-        print(f"[StateManager] State: {old_name} → {self.current_state.name}")
+        print(f"[StateManager] State: {old_name} {self.current_state.name}")
 
     def handle(self):
         """Handle the current state."""

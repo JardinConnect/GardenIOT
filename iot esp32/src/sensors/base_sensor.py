@@ -20,17 +20,17 @@ class BaseSensor:
             raw_data = self._read_raw()
         except Exception as e:
             self._error_count += 1
-            print(f"  ✗ [{self.name}] Read error ({self._error_count}x): {e}")
+            print(f"  [{self.name}] Read error ({self._error_count}x): {e}")
             return self._last_reading
 
         if raw_data is None:
             self._error_count += 1
-            print(f"  ✗ [{self.name}] No data returned ({self._error_count}x)")
+            print(f"  [{self.name}] No data returned ({self._error_count}x)")
             return self._last_reading
 
         if not self._validate(raw_data):
             self._error_count += 1
-            print(f"  ✗ [{self.name}] Invalid data ({self._error_count}x): {raw_data}")
+            print(f"  [{self.name}] Invalid data ({self._error_count}x): {raw_data}")
             return self._last_reading
 
         # Create DTO with sensor data
@@ -61,7 +61,8 @@ class BaseSensor:
     def _get_unit_for_metric(self, metric):
         """Determine unit based on metric name."""
         units = {
-            'temperature': '°C',
+            # 'temperature': '°C',
+            'temperature': 'C',
             'humidity': '%',
             'luminance': 'lux',
             'luminosity': 'lux',

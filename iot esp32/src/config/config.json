@@ -1,7 +1,7 @@
 {
   "device": {
     "uid": "auto",
-    "parent_id": null,
+    "parent_id": "GATEWAY_PI",
     "send_interval": 60,
     "listen_timeout": 5000
   },
@@ -12,14 +12,17 @@
     "bandwidth": 500000,
     "coding_rate": 5,
     "tx_power": 14,
-    "sync_word": "0x12",
+    "sync_word": 18,
+    "preamble_length": 8,
+    "crc": false,
+    "spi_baudrate": 5000000,
     "pins": {
       "sck": 18,
       "miso": 19,
       "mosi": 23,
       "cs": 5,
       "rst": 14,
-      "irq": 26
+      "dio0": 26
     }
   },
 
@@ -75,7 +78,7 @@
         "wet_value": 900
       },
       "alerts": {
-        "soil_moisture": { "min": 30, "max": null }
+        "soil_moisture": { "min": 1, "max": null }
       }
     }
   ],

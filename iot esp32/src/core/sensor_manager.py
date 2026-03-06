@@ -68,10 +68,10 @@ class SensorManager:
                 sensor = SensorFactory.create(sensor_cfg['type'], **params)
                 self.sensors[sensor_cfg['name']] = sensor
                 
-                print(f"[SensorManager] ✓ Sensor '{sensor_cfg['name']}' ({sensor_cfg['type']}) initialized")
+                print(f"[SensorManager] Sensor '{sensor_cfg['name']}' ({sensor_cfg['type']}) initialized")
             
             except Exception as e:
-                print(f"[SensorManager] ✗ Failed to init sensor '{sensor_cfg['name']}': {e}")
+                print(f"[SensorManager] Failed to init sensor '{sensor_cfg['name']}': {e}")
                 
                 # Publish error event
                 self.event_bus.publish('sensor.init_error', {
@@ -79,7 +79,7 @@ class SensorManager:
                     'error': str(e)
                 })
         
-        print(f"[SensorManager] ✓ {len(self.sensors)} sensors ready")
+        print(f"[SensorManager] {len(self.sensors)} sensors ready")
     
     def read_all_sensors(self):
         """

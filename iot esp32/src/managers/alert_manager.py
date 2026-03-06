@@ -91,7 +91,7 @@ class AlertManager:
         """
         sensor_name = data.get('sensor')
         error = data.get('error')
-        print(f"[AlertManager] ⚠ Sensor error on '{sensor_name}': {error}")
+        print(f"[AlertManager] Sensor error on '{sensor_name}': {error}")
 
     def _check_threshold(self, sensor, metric, value, threshold):
         """
@@ -118,7 +118,7 @@ class AlertManager:
                     'threshold': f"max={max_val}",
                     'type': 'high'
                 }
-                print(f"[AlertManager] 🚨 ALERT: {sensor}/{metric} = {value} > {max_val}")
+                print(f"[AlertManager] ALERT: {sensor}/{metric} = {value} > {max_val}")
                 
                 # Publish alert event
                 self._event_bus.publish('alert.triggered', self._active_alerts[alert_key])
@@ -134,7 +134,7 @@ class AlertManager:
                     'threshold': f"min={min_val}",
                     'type': 'low'
                 }
-                print(f"[AlertManager] 🚨 ALERT: {sensor}/{metric} = {value} < {min_val}")
+                print(f"[AlertManager] ALERT: {sensor}/{metric} = {value} < {min_val}")
                 
                 # Publish alert event
                 self._event_bus.publish('alert.triggered', self._active_alerts[alert_key])
@@ -143,7 +143,7 @@ class AlertManager:
         # Value is back to normal → clear alert
         if alert_key in self._active_alerts:
             del self._active_alerts[alert_key]
-            print(f"[AlertManager] ✅ Alert cleared: {sensor}/{metric} = {value}")
+            print(f"[AlertManager] Alert cleared: {sensor}/{metric} = {value}")
             
             self._event_bus.publish('alert.cleared', {
                 'sensor': sensor,

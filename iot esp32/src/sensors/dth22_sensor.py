@@ -9,10 +9,10 @@ class DHT22Sensor(BaseSensor):
         self.dht = dht.DHT22(self.pin)
     
     def _read_raw(self):
-        self._sensor.measure()
+        self.dht.measure()
         return {
-            'temperature': self._sensor.temperature(),
-            'humidity': self._sensor.humidity()
+            'temperature': self.dht.temperature(),
+            'humidity': self.dht.humidity()
         }
 
     

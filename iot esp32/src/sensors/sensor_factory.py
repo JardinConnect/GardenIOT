@@ -37,7 +37,7 @@ class SensorFactory:
                     **sensor_cfg.get('params', {})
                 )
                 sensors.append(sensor)
-                print(f"  ✓ Sensor '{sensor.name}' initialized")
+                print(f" Sensor '{sensor.name}' initialized")
             except Exception as e:
-                print(f"  ✗ Failed to create sensor '{sensor_cfg.get('type')}': {e}")
+                print(f" Failed to create sensor '{sensor_cfg.get('type')}': {e}")
         return sensors

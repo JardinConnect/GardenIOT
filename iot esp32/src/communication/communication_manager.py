@@ -54,7 +54,7 @@ class CommunicationManager:
             bool: True if sent successfully
         """
         if not self._strategy:
-            print("[CommunicationManager] ✗ No strategy configured")
+            print("[CommunicationManager] No strategy configured")
             return False
         
         try:
@@ -72,7 +72,7 @@ class CommunicationManager:
             return False
         
         except Exception as e:
-            print(f"[CommunicationManager] ✗ Send failed via {self._strategy.name}: {e}")
+            print(f"[CommunicationManager] Send failed via {self._strategy.name}: {e}")
             
             # Try fallback on exception
             if self._fallback:
@@ -80,7 +80,7 @@ class CommunicationManager:
                     print(f"[CommunicationManager] Falling back to {self._fallback.name}")
                     return self._fallback.send(data, expect_ack=expect_ack)
                 except Exception as e2:
-                    print(f"[CommunicationManager] ✗ Fallback also failed: {e2}")
+                    print(f"[CommunicationManager] Fallback also failed: {e2}")
             
             return False
     
@@ -95,13 +95,13 @@ class CommunicationManager:
             dict or None: received message
         """
         if not self._strategy:
-            print("[CommunicationManager] ✗ No strategy configured")
+            print("[CommunicationManager] No strategy configured")
             return None
         
         try:
             return self._strategy.receive(timeout_ms=timeout_ms)
         except Exception as e:
-            print(f"[CommunicationManager] ✗ Receive failed: {e}")
+            print(f"[CommunicationManager] Receive failed: {e}")
             return None
     
     def get_stats(self):

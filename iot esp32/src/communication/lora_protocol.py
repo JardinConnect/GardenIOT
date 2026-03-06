@@ -106,17 +106,17 @@ class LoRaProtocol(CommunicationProtocol):
             
             if ack:
                 self.stats['ack_received'] += 1
-                log(f"✓ ACK reçu")
+                log(f"ACK reçu")
                 return True
             
             # No ACK received
             self.stats['ack_timeout'] += 1
             if attempt < max_attempts:
                 self.stats['retries'] += 1
-                log(f"✗ ACK timeout, retrying {attempt}/{max_attempts}...")
+                log(f"ACK timeout, retrying {attempt}/{max_attempts}...")
                 time.sleep_ms(200)  # Small delay before retry
         
-        log(f"✗ Failed after {max_attempts} attempts (no ACK)")
+        log(f"Failed after {max_attempts} attempts (no ACK)")
         return False
 
     def send_ack(self, to_uid):
@@ -174,7 +174,7 @@ class LoRaProtocol(CommunicationProtocol):
             time.sleep_ms(100)
         
         if len(message) < 100:
-            log(f"→ {message}")
+            log(f" {message}")
 
     def _wait_for_ack(self, timeout_ms=2000):
         """

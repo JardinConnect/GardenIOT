@@ -4,12 +4,12 @@ Main entry point - Uses DeviceManager façade.
 This is the complete implementation using the Façade Pattern.
 """
 
-from core.device_manager import DeviceManager
 import sys
-import os
+sys.path.append('/src')  # Ajoute /src au chemin de recherche
+sys.path.append('/src/models')
 
-# Add src to path for testing
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+from core.device_manager import DeviceManager
 
 def main():
     """
@@ -21,7 +21,7 @@ def main():
     print("="*60)
     
     # Create device manager (Façade)
-    device = DeviceManager(config_path="config/config.json")
+    device = DeviceManager(config_path="/src/config/config.json")    
     
     # Initialize all components
     device.initialize()
@@ -39,7 +39,7 @@ def test_mode():
     print("="*60)
     
     # Create device manager (Façade)
-    device = DeviceManager(config_path="config/config.json")
+    device = DeviceManager(config_path="/src/config/config.json")
     
     # Initialize all components
     device.initialize()

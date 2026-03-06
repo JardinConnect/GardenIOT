@@ -20,7 +20,7 @@ def test_sensor_reading():
     reading = SensorReading("temperature", 22.5, "°C")
     print(f"  Reading: {reading.metric} = {reading.value}{reading.unit}")
     print(f"  Dict: {reading.to_dict()}")
-    print("  ✓ SensorReading test passed\n")
+    print(" SensorReading test passed\n")
 
 def test_sensor_data():
     """Test SensorData class."""
@@ -34,7 +34,7 @@ def test_sensor_data():
     print(f"  Full dict: {dto.to_dict()}")
     print(f"  Compact: {dto.to_compact()}")
     print(f"  Temperature value: {dto.get_reading('temperature')}")
-    print("  ✓ SensorData test passed\n")
+    print(" SensorData test passed\n")
 
 def test_dht22_with_dto():
     """Test DHT22 sensor with DTO."""
@@ -58,10 +58,10 @@ def test_dht22_with_dto():
         print(f"  DTO: {dto}")
         print(f"  Full dict: {dto.to_dict()}")
         print(f"  Compact: {dto.to_compact()}")
-        print("  ✓ DHT22 with DTO test passed\n")
+        print(" DHT22 with DTO test passed\n")
         
     except Exception as e:
-        print(f"  ✗ DHT22 test failed: {e}\n")
+        print(f" DHT22 test failed: {e}\n")
 
 def test_bh1750_with_dto():
     """Test BH1750 sensor with DTO."""
@@ -85,10 +85,10 @@ def test_bh1750_with_dto():
         print(f"  DTO: {dto}")
         print(f"  Full dict: {dto.to_dict()}")
         print(f"  Compact: {dto.to_compact()}")
-        print("  ✓ BH1750 with DTO test passed\n")
+        print(" BH1750 with DTO test passed\n")
         
     except Exception as e:
-        print(f"  ✗ BH1750 test failed: {e}\n")
+        print(f" BH1750 test failed: {e}\n")
 
 def main():
     """Run all tests."""

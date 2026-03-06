@@ -32,14 +32,14 @@ class ConfigManager:
         self._config = {}
         self._initialized = True
 
-    def load(self, config_path='config/config.json'):
+    def load(self, config_path='/src/config/config.json'):
         """Load configuration from JSON file"""
         try:
             with open(config_path, 'r') as f:
                 self._config = json.load(f)
-            print(f"[ConfigManager] ✓ Configuration loaded from {config_path}")
+            print(f"[ConfigManager] Configuration loaded from {config_path}")
         except Exception as e:
-            print(f"[ConfigManager] ✗ Error loading config: {e}")
+            print(f"[ConfigManager] Error loading config: {e}")
             self._config = {}
 
     def get(self, key_path, default=None):
@@ -92,14 +92,14 @@ class ConfigManager:
         
         config[keys[-1]] = value
     
-    def save(self, config_path='config/config.json'):
+    def save(self, config_path='/src/config/config.json'):
         """Save configuration to JSON file"""
         try:
             with open(config_path, 'w') as f:
                 json.dump(self._config, f, indent=2)
-            print(f"[ConfigManager] ✓ Configuration saved to {config_path}")
+            print(f"[ConfigManager] Configuration saved to {config_path}")
         except Exception as e:
-            print(f"[ConfigManager] ✗ Error saving config: {e}")
+            print(f"[ConfigManager] Error saving config: {e}")
 
     def get_sensor_codes(self, sensor_name):
         """

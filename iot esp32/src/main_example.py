@@ -68,18 +68,18 @@ def test_lora_only():
     success = device.protocol.send(test_message, expect_ack=True)
     
     if success:
-        print("✓ Message sent successfully (ACK received)")
+        print("Message sent successfully (ACK received)")
     else:
-        print("✗ Message send failed (no ACK)")
+        print("Message send failed (no ACK)")
     
     # Test receive
     print("\nListening for messages (10s)...")
     message = device.listen_for_messages(timeout_ms=10000)
     
     if message:
-        print(f"✓ Message received: {message}")
+        print(f"Message received: {message}")
     else:
-        print("✗ No message received")
+        print("No message received")
     
     # Show stats
     print("\nLoRa Statistics:")
