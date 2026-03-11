@@ -102,7 +102,7 @@ class ChildRepository:
         data["children"].append(new_child)
         
         self._save_data(data)
-        print(f"✅ {child_uid} ajouté")
+        print(f" {child_uid} ajouté")
         return True
     
     def remove_child(self, child_uid: str) -> bool:
@@ -118,7 +118,7 @@ class ChildRepository:
                 print(f"🗑️ {child_uid} supprimé")
                 return True
         
-        print(f"⚠️ {child_uid} introuvable")
+        print(f" {child_uid} introuvable")
         return False
     
     def remove_all_children(self) -> int:

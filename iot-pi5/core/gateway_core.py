@@ -4,8 +4,8 @@ Cœur du système Gateway - Classe principale
 import time
 import json
 from typing import Optional, Dict, Any
-from ..models.states import SystemState, NormalState, PairingState, MaintenanceState
-from ..models.messages import LoRaMessage, MqttMessage, MessageType
+from models.states import SystemState, NormalState, PairingState, MaintenanceState
+from models.messages import LoRaMessage, MqttMessage, MessageType
 
 
 class GatewayCore:
@@ -63,67 +63,112 @@ class GatewayCore:
         self.running = True
         self.stats["uptime"] = time.time()
         
-        print("✅ Système prêt")
+        print(" Système prêt")
         
         # Boucle principale
         self.main_loop()
     
     def main_loop(self):
         """Boucle principale du système"""
+        start_time = time.time()
         try:
             while self.running:
-                # 1. Gérer l'état courant
-                self.current_state.handle()
-                
-                # 2. Vérifier les messages LoRa
+                # 1. Vérifier les messages LoRa (PRIORITAIRE)
                 self.process_lora_messages()
                 
-                # 3. Vérifier les messages MQTT
+                # 2. Gérer l'état courant
+                if self.current_state:
+                    self.current_state.handle()
+                
+                # 3. Vérifier la connexion MQTT
                 self.process_mqtt_messages()
                 
                 # 4. Mettre à jour les statistiques
-                self.stats["uptime"] = time.time() - self.stats["uptime"]
-                
-                # Petit délai pour éviter de saturer le CPU
-                time.sleep(0.01)
+                self.stats["uptime"] = time.time() - start_time
                 
         except KeyboardInterrupt:
             self.shutdown("Arrêt demandé par l'utilisateur")
         except Exception as e:
             self.shutdown(f"Erreur fatale: {e}", True)
     
+
     def process_lora_messages(self):
         """Traite les messages LoRa entrants"""
-        try:
-            message = self.lora_comm.receive()
-            if message:
-                self.stats["messages_received"] += 1
-                
-                # Parser le message
-                lora_msg = LoRaMessage.from_lora_format(message)
-                if lora_msg:
-                    print(f"📡 LoRa reçu: {lora_msg.message_type.value} de {lora_msg.uid}")
-                    
-                    # Router le message
-                    self.message_router.route_from_lora(lora_msg)
-                else:
-                    print(f"⚠️ Message LoRa invalide: {message}")
-                    self.stats["errors"] += 1
+        print("[GatewayCore.process_lora_messages] ENTRY - Checking for LoRa messages...")
         
+        try:
+            # Recevoir un message
+            message = self.lora_comm.receive()
+            
+            if not message:
+                print("[GatewayCore.process_lora_messages] EXIT - No message received")
+                return
+            
+            self.stats["messages_received"] += 1
+            print(f"[GatewayCore.process_lora_messages] Raw message received: {message}")
+            
+            # Parser le message
+            lora_msg = LoRaMessage.from_lora_format(message)
+            
+            if not lora_msg:
+                print(f"[GatewayCore.process_lora_messages] ERROR - Invalid LoRa message format: {message}")
+                self.stats["errors"] += 1
+                print("[GatewayCore.process_lora_messages] EXIT - Invalid message")
+                return
+            
+            # Log du message reçu
+            print(f"📡 [{lora_msg.message_type.value}] de {lora_msg.uid}: {lora_msg.data}")
+            
+            # Envoyer ACK immédiatement (sauf pour les ACK entrants)
+            if lora_msg.message_type != MessageType.ACK:
+                gateway_uid = self.config.get("gateway_uid", "GATEWAY_PI")
+                ack_success = self.lora_comm.send_ack(lora_msg.uid, gateway_uid)
+                
+                if ack_success:
+                    print(f"[GatewayCore.process_lora_messages] ACK sent successfully to {lora_msg.uid}")
+                else:
+                    print(f"[GatewayCore.process_lora_messages] WARNING - Failed to send ACK to {lora_msg.uid}")
+                    self.stats["errors"] += 1
+            else:
+                print(f"[GatewayCore.process_lora_messages] ACK received from {lora_msg.uid} (no ACK needed)")
+            
+            # Router le message vers MQTT (sauf pour les ACK)
+            if lora_msg.message_type != MessageType.ACK:
+                print(f"[GatewayCore.process_lora_messages] Routing message to MQTT...")
+                self.message_router.route_from_lora(lora_msg)
+            else:
+                print(f"[GatewayCore.process_lora_messages] ACK message - no MQTT routing needed")
+            
+            print("[GatewayCore.process_lora_messages] EXIT - Message processed successfully")
+            
         except Exception as e:
-            print(f"❌ Erreur traitement LoRa: {e}")
+            print(f"[GatewayCore.process_lora_messages] ERROR: {e}")
             self.stats["errors"] += 1
+            print("[GatewayCore.process_lora_messages] EXIT - Error occurred")
+    
+    # def _send_ack(self, target_uid: str):
+    #     """Envoie un ACK à un device ESP32"""
+    #     from datetime import datetime
+    #     timestamp = datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
+        
+    #     # Format attendu par l'ESP32: B|ACK|timestamp|gateway_uid|TO:device_uid|E
+    #     gateway_uid = self.config.get("gateway_uid", "GATEWAY_PI")
+    #     ack_message = f"B|ACK|{timestamp}|{gateway_uid}|TO:{target_uid}|E"
+        
+    #     self.lora_comm.send(ack_message, retries=1)
+    #     print(f"📤 ACK envoyé à {target_uid}")
+
     
     def process_mqtt_messages(self):
         """Traite les messages MQTT entrants"""
         try:
             # Le MQTT est géré par callbacks, mais on peut vérifier l'état de la connexion
             if not self.mqtt_comm.is_connected():
-                print("⚠️ Connexion MQTT perdue, tentative de reconnexion...")
+                print(" Connexion MQTT perdue, tentative de reconnexion...")
                 self.mqtt_comm.reconnect()
         
         except Exception as e:
-            print(f"❌ Erreur traitement MQTT: {e}")
+            print(f" Erreur traitement MQTT: {e}")
             self.stats["errors"] += 1
     
     def set_state(self, state: SystemState):

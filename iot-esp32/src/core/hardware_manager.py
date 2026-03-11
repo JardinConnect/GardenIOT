@@ -51,12 +51,15 @@ class HardwareManager:
     def init_lora_hardware(self):
         """Initialize LoRa radio module"""
         lora_config = self.config.get('lora', {})
+        print(f"[HardwareManager] Initializing LoRa hardware with config: {lora_config}")
         pins = lora_config.get('pins', {})
         
         if not self.spi:
             self.init_spi()
         
         from lib.Lora import LoRa
+
+        print(f"[HardwareManager] SPI initialized: {self.spi}")
         
         # Create Pin objects (comme dans pins.py)
         cs = Pin(pins.get('cs', 5), Pin.OUT)
@@ -66,7 +69,7 @@ class HardwareManager:
         self.lora = LoRa(
             self.spi,
             cs=cs,
-            rx=rx_irq,
+            rx=rx_irq,  # Réactiver les interruptions
             rs=rst,
             frequency=lora_config.get('frequency', 433.1),
             bandwidth=lora_config.get('bandwidth', 500000),

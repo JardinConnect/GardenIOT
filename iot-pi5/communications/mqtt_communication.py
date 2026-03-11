@@ -46,7 +46,7 @@ class MqttCommunication:
             self.connect()
             
         except Exception as e:
-            print(f"❌ Échec initialisation MQTT: {e}")
+            print(f" Échec initialisation MQTT: {e}")
             raise
     
     def connect(self):
@@ -73,13 +73,13 @@ class MqttCommunication:
                 time.sleep(0.1)
             
             if self.connected:
-                print("✅ Connecté au broker MQTT")
+                print(" Connecté au broker MQTT")
                 self._subscribe_to_topics()
             else:
-                print("⚠️ Timeout connexion MQTT")
+                print(" Timeout connexion MQTT")
                 
         except Exception as e:
-            print(f"❌ Échec connexion MQTT: {e}")
+            print(f" Échec connexion MQTT: {e}")
             self.connected = False
     
     def reconnect(self):
@@ -88,10 +88,10 @@ class MqttCommunication:
             if self.client:
                 self.client.reconnect()
                 self.connected = True
-                print("✅ Reconnexion MQTT réussie")
+                print(" Reconnexion MQTT réussie")
                 self._subscribe_to_topics()
         except Exception as e:
-            print(f"❌ Échec reconnexion MQTT: {e}")
+            print(f" Échec reconnexion MQTT: {e}")
             self.connected = False
     
     def disconnect(self):
@@ -112,7 +112,7 @@ class MqttCommunication:
     def publish(self, topic: str, payload: Dict[str, Any], qos: int = 1) -> bool:
         """Publie un message sur un topic"""
         if not self.connected:
-            print("⚠️ Impossible de publier - non connecté")
+            print(" Impossible de publier - non connecté")
             return False
         
         try:
@@ -126,17 +126,17 @@ class MqttCommunication:
                 print(f"📤 MQTT publié sur {topic}")
                 return True
             else:
-                print(f"❌ Échec publication MQTT (code {result.rc})")
+                print(f" Échec publication MQTT (code {result.rc})")
                 return False
                 
         except Exception as e:
-            print(f"❌ Erreur publication MQTT: {e}")
+            print(f" Erreur publication MQTT: {e}")
             return False
     
     def subscribe(self, topic: str, qos: int = 1):
         """S'abonne à un topic"""
         if not self.connected:
-            print("⚠️ Impossible de s'abonner - non connecté")
+            print(" Impossible de s'abonner - non connecté")
             return False
         
         try:
@@ -144,14 +144,14 @@ class MqttCommunication:
             
             if result == mqtt.MQTT_ERR_SUCCESS:
                 self.subscribed_topics.append(topic)
-                print(f"📩 Abonnement à {topic}")
+                print(f" Abonnement à {topic}")
                 return True
             else:
-                print(f"❌ Échec abonnement à {topic}")
+                print(f" Échec abonnement à {topic}")
                 return False
                 
         except Exception as e:
-            print(f"❌ Erreur abonnement MQTT: {e}")
+            print(f" Erreur abonnement MQTT: {e}")
             return False
     
     def set_message_callback(self, callback: Callable[[str, str, int], None]):
@@ -175,10 +175,10 @@ class MqttCommunication:
         """Callback appelé lors de la connexion"""
         if rc == 0:
             self.connected = True
-            print("✅ Connecté au broker MQTT")
+            print(" Connecté au broker MQTT")
         else:
             self.connected = False
-            print(f"❌ Échec connexion MQTT (code {rc})")
+            print(f" Échec connexion MQTT (code {rc})")
     
     def _on_disconnect(self, client, userdata, rc):
         """Callback appelé lors de la déconnexion"""
@@ -189,11 +189,11 @@ class MqttCommunication:
         """Callback appelé lors de la réception d'un message"""
         try:
             payload = msg.payload.decode('utf-8')
-            print(f"📩 MQTT reçu sur {msg.topic}: {payload[:100]}...")
+            print(f" MQTT reçu sur {msg.topic}: {payload[:100]}...")
             
             # Appeler le callback si défini
             if self.message_callback:
                 self.message_callback(msg.topic, payload, msg.qos)
                 
         except Exception as e:
-            print(f"❌ Erreur traitement message MQTT: {e}")
+            print(f" Erreur traitement message MQTT: {e}")

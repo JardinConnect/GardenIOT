@@ -98,7 +98,7 @@ class TestDataFlowIntegration(unittest.TestCase):
         })
         
         print(f"5. Payload MQTT validé: {payload}")
-        print("✅ Test réussi: Données capteurs correctement routées")
+        print(" Test réussi: Données capteurs correctement routées")
     
     def test_alert_config_flow(self):
         """Test complet du flux de configuration d'alerte"""
@@ -147,7 +147,7 @@ class TestDataFlowIntegration(unittest.TestCase):
             self.assertTrue(lora_message.startswith("B|A|"))
             self.assertTrue(lora_message.endswith("|E"))
         
-        print("✅ Test réussi: Configuration d'alerte correctement routée")
+        print(" Test réussi: Configuration d'alerte correctement routée")
     
     def test_alert_trigger_flow(self):
         """Test complet du flux d'alerte déclenchée"""
@@ -191,7 +191,7 @@ class TestDataFlowIntegration(unittest.TestCase):
         self.assertEqual(payload['trigger_type'], "critical")
         
         print(f"5. Payload MQTT validé: {payload}")
-        print("✅ Test réussi: Alerte déclenchée correctement routée")
+        print(" Test réussi: Alerte déclenchée correctement routée")
     
     def test_pairing_flow(self):
         """Test complet du flux de pairing"""
@@ -244,7 +244,7 @@ class TestDataFlowIntegration(unittest.TestCase):
         self.assertEqual(payload['parent_id'], "PI5_TEST")
         
         print(f"7. Payload MQTT validé: {payload}")
-        print("✅ Test réussi: Pairing correctement effectué")
+        print(" Test réussi: Pairing correctement effectué")
     
     def test_unauthorized_cell_data(self):
         """Test flux avec une cellule non autorisée"""
@@ -266,7 +266,7 @@ class TestDataFlowIntegration(unittest.TestCase):
         self.assertEqual(len(self.published_messages), 0)
         print("3. Aucun message publié sur MQTT")
         
-        print("✅ Test réussi: Cellule non autorisée correctement ignorée")
+        print(" Test réussi: Cellule non autorisée correctement ignorée")
 
 
 if __name__ == '__main__':

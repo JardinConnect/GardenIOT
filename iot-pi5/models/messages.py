@@ -15,7 +15,7 @@ class MessageType(Enum):
     UNPAIR = "U"         # Demande de désappariement
     ALERT_CONFIG = "A"   # Configuration d'alerte
     ALERT_TRIGGER = "T"  # Alerte déclenchée
-    ACK = "PA"           # Accusé de réception
+    ACK = "ACK"           # Accusé de réception
     COMMAND = "C"        # Commande générale
 
 
@@ -91,56 +91,59 @@ class SensorData:
         self.raw_data = raw_data
         self.parsed_values = self._parse_sensor_data(raw_data)
     
+
     def _parse_sensor_data(self, data_str: str) -> Dict[str, float]:
-        """Parse les données capteurs avec support des formats 1TA:25, 2HB:60, etc.
+        """Parse les données capteurs.
         
-        Format attendu: INDEXCODE:VALUE où:
-        - INDEX: 1-9 (index du capteur)
-        - CODE: 2+ caractères (type de capteur)
-        - VALUE: valeur numérique
-        - Séparateur: ':' entre CODE et VALUE
+        Format: 1TA25;1TS18;1HA60;1HS45;1L450
         
-        Exemples valides:
-        - 1TA:25 (index 1, code TA, valeur 25)
-        - 2HB:60 (index 2, code HB, valeur 60)
-        - 1TEMPERATURE:23.5 (index 1, code TEMPERATURE, valeur 23.5)
+        Structure: {index}{code}{value}
+        - index: 1 chiffre (1-9)
+        - code: lettres (TA, TS, HA, HS, L, etc.)
+        - value: nombre (entier ou décimal, peut être négatif)
+        
+        Exemples:
+        - 1TA25   -> code=TA, index=1, value=25
+        - 1HS45   -> code=HS, index=1, value=45
+        - 1L450   -> code=L,  index=1, value=450
+        - 1TA-5   -> code=TA, index=1, value=-5
         """
         sensors = {}
         
         for item in data_str.split(";"):
-            if len(item) < 5:  # Minimum: 1A:0 (index + 1 char code + : + 1 char value)
+            item = item.strip()
+            if len(item) < 3:
                 continue
             
             try:
-                # Extraire l'index (premier caractère)
+                # Premier caractère = index
                 index = item[0]
-                
-                # Trouver la position du séparateur ':'
-                colon_pos = item.find(':')
-                
-                if colon_pos == -1:
-                    # Ancien format sans ':' - ignorer pour l'instant
-                    # (pourrait être ajouté si besoin pour compatibilité)
+                if not index.isdigit():
                     continue
                 
-                # Extraire le code (entre index et :)
-                code = item[1:colon_pos]
+                rest = item[1:]
                 
-                # Extraire la valeur (après :)
-                value_str = item[colon_pos+1:]
+                # Séparer lettres (code) et chiffres/signe (valeur)
+                code = ''
+                value_str = ''
                 
-                # Convertir en float
-                value = float(value_str)
+                for i, char in enumerate(rest):
+                    if char.isalpha():
+                        code += char
+                    else:
+                        value_str = rest[i:]
+                        break
                 
-                # Stocker avec la clé CODE:INDEX pour gérer les multiples capteurs
-                # Ex: "TA:1", "HB:2", etc.
-                sensor_key = f"{code}:{index}"
-                sensors[sensor_key] = value
-                
+                if code and value_str:
+                    value = float(value_str)
+                    sensor_key = f"{code}:{index}"
+                    sensors[sensor_key] = value
+                    
             except (ValueError, IndexError):
                 continue
         
         return sensors
+
     
     def to_dict(self) -> Dict[str, Any]:
         """Convertit en dictionnaire pour JSON - conserve le format original"""

@@ -147,13 +147,13 @@ python -m unittest discover tests -v
 ## Couverture de Code
 
 Les tests couvrent :
-- ✅ Parsing des messages LoRa
-- ✅ Création des modèles de données
-- ✅ Routing des messages
-- ✅ Transformation des formats
-- ✅ Gestion des erreurs
-- ✅ Validation des données
-- ✅ Flux complets de bout en bout
+-  Parsing des messages LoRa
+-  Création des modèles de données
+-  Routing des messages
+-  Transformation des formats
+-  Gestion des erreurs
+-  Validation des données
+-  Flux complets de bout en bout
 
 ## Intégration CI/CD
 

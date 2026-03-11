@@ -2,7 +2,7 @@
 Message Router - Gère le routing des messages entre LoRa et MQTT
 """
 from typing import Dict, Any, Optional
-from ..models.messages import LoRaMessage, MqttMessage, MessageType, SensorData, AlertConfig
+from models.messages import LoRaMessage, MqttMessage, MessageType, SensorData, AlertConfig
 
 
 class MessageRouter:
@@ -47,23 +47,26 @@ class MessageRouter:
             elif "pairing/request" in topic:
                 self._handle_mqtt_pairing_request(mqtt_message.payload)
             else:
-                print(f"⚠️ Topic MQTT non géré: {topic}")
+                print(f" Topic MQTT non géré: {topic}")
                 
         except Exception as e:
-            print(f"❌ Erreur routing MQTT: {e}")
+            print(f" Erreur routing MQTT: {e}")
     
     # Handlers pour messages LoRa
     def _handle_lora_data(self, message: LoRaMessage):
         """Traite les données capteurs"""
-        # Parser les données capteurs (conserve le format original)
-        sensor_data = SensorData.from_lora_data(message.data)
+        print(f"[MessageRouter._handle_lora_data] ENTRY - Processing DATA message from {message.uid}")
         
         # Vérifier si l'enfant est autorisé
         if not self.gateway.child_repo.is_child_authorized(message.uid):
-            print(f"⚠️ Données de {message.uid} ignorées (non appairé)")
+            print(f"[MessageRouter._handle_lora_data] WARNING - Unauthorized child: {message.uid}")
             return
         
-        # Construire le payload MQTT avec le format original
+        # Parser les données capteurs (conserve le format original)
+        sensor_data = SensorData.from_lora_data(message.data)
+        print(f"[MessageRouter._handle_lora_data] Sensor data parsed: {sensor_data.parsed_values}")
+        
+        # Construire le payload MQTT
         payload = {
             "uid": message.uid,
             "timestamp": message.timestamp,
@@ -73,22 +76,30 @@ class MessageRouter:
         
         # Publier sur MQTT
         topic = self.mqtt_topics["sensor_data"].format(uid=message.uid)
-        self.gateway.mqtt_comm.publish(topic, payload, qos=1)
         
-        print(f"📤 Données envoyées à MQTT: {topic}")
+        try:
+            publish_success = self.gateway.mqtt_comm.publish(topic, payload, qos=1)
+            if publish_success:
+                print(f"[MessageRouter._handle_lora_data] SUCCESS - Data sent to MQTT: {topic}")
+            else:
+                print(f"[MessageRouter._handle_lora_data] ERROR - Failed to publish to MQTT")
+        except Exception as e:
+            print(f"[MessageRouter._handle_lora_data] ERROR - MQTT publish error: {e}")
+        
+        print("[MessageRouter._handle_lora_data] EXIT - Data message processed")
     
     def _handle_lora_pairing(self, message: LoRaMessage):
         """Traite les demandes de pairing"""
         # Vérifier si nous sommes en mode pairing
         if not self.gateway.current_state or not isinstance(self.gateway.current_state, PairingState):
-            print(f"❌ Pairing refusé pour {message.uid} (mode pairing inactif)")
+            print(f" Pairing refusé pour {message.uid} (mode pairing inactif)")
             return
         
         # Ajouter l'enfant
         success = self.gateway.child_repo.add_child(message.uid)
         
         if success:
-            print(f"✅ Nouveau enfant appairé: {message.uid}")
+            print(f" Nouveau enfant appairé: {message.uid}")
             
             # Construire l'ACK
             ack_message = LoRaMessage(
@@ -124,7 +135,7 @@ class MessageRouter:
                 qos=0
             )
         else:
-            print(f"⚠️ Échec désappariement: {message.uid}")
+            print(f" Échec désappariement: {message.uid}")
     
     def _handle_lora_alert_config(self, message: LoRaMessage):
         """Traite les accusés de réception de configuration d'alerte"""
@@ -154,17 +165,17 @@ class MessageRouter:
             qos=1
         )
         
-        print(f"⚠️ Alerte déclenchée: {alert_trigger.alert_id} sur {message.uid}")
+        print(f" Alerte déclenchée: {alert_trigger.alert_id} sur {message.uid}")
     
     def _handle_unknown_lora(self, message: LoRaMessage):
         """Gère les messages LoRa inconnus"""
-        print(f"⚠️ Message LoRa inconnu: {message.message_type.value} de {message.uid}")
+        print(f" Message LoRa inconnu: {message.message_type.value} de {message.uid}")
     
     # Handlers pour messages MQTT
     def _handle_mqtt_alert_config(self, payload: Dict[str, Any]):
         """Traite les configurations d'alerte depuis MQTT"""
         alert_id = payload.get("id", "")
-        print(f"📩 Configuration alerte reçue: {alert_id}")
+        print(f" Configuration alerte reçue: {alert_id}")
         
         # Créer la configuration à partir du payload backend
         alert_config = AlertConfig.from_mqtt_payload(payload)
@@ -175,10 +186,10 @@ class MessageRouter:
             if self.gateway.child_repo.is_child_authorized(cell_id):
                 valid_cells.append(cell_id)
             else:
-                print(f"⚠️ Cellule {cell_id} non appairée - ignorée")
+                print(f" Cellule {cell_id} non appairée - ignorée")
         
         if not valid_cells:
-            print(f"⚠️ Aucune cellule valide pour l'alerte {alert_id}")
+            print(f" Aucune cellule valide pour l'alerte {alert_id}")
             return
         
         # Mettre à jour la liste des cellules valides
@@ -197,11 +208,11 @@ class MessageRouter:
             if success:
                 print(f"📤 Config alerte {alert_id} envoyée à {cell_uid} via LoRa")
             else:
-                print(f"❌ Échec envoi à {cell_uid}")
+                print(f" Échec envoi à {cell_uid}")
     
     def _handle_mqtt_unpair(self, uid: str, payload: Dict[str, Any]):
         """Traite les commandes de désappariement depuis MQTT"""
-        print(f"📩 Commande désappariement reçue pour {uid}")
+        print(f" Commande désappariement reçue pour {uid}")
         
         # Construire le message LoRa
         lora_message = LoRaMessage(
@@ -224,10 +235,10 @@ class MessageRouter:
         event = payload.get("event")
         
         if event == "start":
-            print("📩 Demande pairing MQTT reçue")
+            print(" Demande pairing MQTT reçue")
             self.gateway.trigger_pairing_mode()
         elif event == "stop":
-            print("📩 Arrêt pairing MQTT reçu")
+            print(" Arrêt pairing MQTT reçu")
             self.gateway.set_state(SystemState.NORMAL)
     
     # Méthodes utilitaires

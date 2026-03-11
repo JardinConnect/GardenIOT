@@ -21,7 +21,7 @@ class DS18B20Sensor:
         self.roms = self.ds.scan()
         
         if not self.roms:
-            print("⚠️ Aucun capteur détecté — vérifie ton câblage et la résistance pull-up.")
+            print(" Aucun capteur détecté — vérifie ton câblage et la résistance pull-up.")
     
     def get_device_count(self):
         """Retourne le nombre de capteurs DS18B20 détectés"""
@@ -34,7 +34,7 @@ class DS18B20Sensor:
             list[float]: Liste des températures en degrés Celsius.
         """
         if not self.roms:
-            print("⚠️ Aucun capteur trouvé.")
+            print(" Aucun capteur trouvé.")
             return []
         
         # Conversion de température (attendre que le capteur mesure)
@@ -53,7 +53,7 @@ class DS18B20Sensor:
             float: Température en °C ou None si invalide
         """
         if not self.roms or index >= len(self.roms):
-            print("⚠️ Aucun capteur ou index invalide.")
+            print(" Aucun capteur ou index invalide.")
             return None
         
         self.ds.convert_temp()

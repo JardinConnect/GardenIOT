@@ -27,7 +27,7 @@ class LoRaManager:
         
         # Vérification structure
         if not "B|" in msg or not "|E" in msg:
-            print(f"⚠️ [PARSER] Rejeté (Format incorrect): {msg}")
+            print(f" [PARSER] Rejeté (Format incorrect): {msg}")
             return None
         
         # Extraction propre
@@ -41,7 +41,7 @@ class LoRaManager:
             parts = inner.split("|")
             
             if len(parts) < 3:
-                print("⚠️ [PARSER] Trop court")
+                print(" [PARSER] Trop court")
                 return None
             
             # Reconstruction datas (si pipes dedans)
@@ -54,7 +54,7 @@ class LoRaManager:
                 "datas": datas_reconstitue
             }
         except Exception as e:
-            print(f"⚠️ [PARSER] Exception: {e}")
+            print(f" [PARSER] Exception: {e}")
             return None
     
     def envoyer_rafale(self, message):
@@ -109,12 +109,12 @@ class LoRaManager:
                                         return parsed
                                         
                             except Exception as e:
-                                print(f"❌ Erreur décodage texte: {e}")
+                                print(f" Erreur décodage texte: {e}")
                         else:
-                            print(f"⚠️ Reçu ignoré (Pas de 'B|'): {raw}")
+                            print(f" Reçu ignoré (Pas de 'B|'): {raw}")
 
                 except Exception as e:
-                    print(f"❌ Erreur lecture RX: {e}")
+                    print(f" Erreur lecture RX: {e}")
                 
                 # On relance l'écoute pour la suite du temps imparti
                 self.lora.recv()

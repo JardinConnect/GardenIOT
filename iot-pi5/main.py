@@ -39,6 +39,7 @@ def main():
 def setup_button(gateway_core: GatewayCore):
     """Configure le bouton physique pour le pairing"""
     try:
+        CONFIG = load_config()
         btn = digitalio.DigitalInOut(CONFIG["system"]["button_pin"])
         btn.direction = digitalio.Direction.INPUT
         btn.pull = digitalio.Pull.UP
@@ -50,7 +51,7 @@ def setup_button(gateway_core: GatewayCore):
         _thread.start_new_thread(button_monitor, (gateway_core, btn))
         
     except Exception as e:
-        print(f"⚠️ Impossible de configurer le bouton: {e}")
+        print(f" Impossible de configurer le bouton: {e}")
 
 
 def button_monitor(gateway_core: GatewayCore, btn):

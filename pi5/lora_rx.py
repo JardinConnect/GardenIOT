@@ -182,14 +182,14 @@ while True:
             # Parser le message
             parsed = parser_message(msg)
             
-            # ✅ DEBUG : Afficher le résultat du parsing
+            #  DEBUG : Afficher le résultat du parsing
             if parsed:
-                print(f"   ✅ Parsé: Type={parsed['type']}, UID={parsed['uid']}")
+                print(f"    Parsé: Type={parsed['type']}, UID={parsed['uid']}")
             else:
-                print(f"   ❌ Échec du parsing")
+                print(f"    Échec du parsing")
             
             if not parsed or not parsed.get("uid"):
-                print(f"   ⚠️ Message invalide ou UID manquant")
+                print(f"    Message invalide ou UID manquant")
                 continue
             
             mtype = parsed["type"]

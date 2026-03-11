@@ -4,7 +4,7 @@
 
 Le **Data Transfer Object (DTO) Pattern** a été implémenté avec succès dans le projet IoT ESP32. Voici ce qui a été réalisé :
 
-### ✅ Fichiers créés
+###  Fichiers créés
 1. **`src/models/sensor_data.py`** - Classes principales du DTO
    - `SensorReading` - Représente une lecture individuelle
    - `SensorData` - DTO principal pour les données des capteurs
@@ -19,7 +19,7 @@ Le **Data Transfer Object (DTO) Pattern** a été implémenté avec succès dans
    - Exemples d'utilisation
    - Avantages et prochaines étapes
 
-### ✅ Fichiers modifiés
+###  Fichiers modifiés
 1. **`src/sensors/base_sensor.py`**
    - Ajout de l'import du DTO
    - Modification de la méthode `read()` pour retourner un `SensorData`
@@ -38,7 +38,7 @@ Le **Data Transfer Object (DTO) Pattern** a été implémenté avec succès dans
    - Adaptation de `_format_sensor_data()` pour utiliser le DTO
    - Utilisation du format compact pour LoRa
 
-### ✅ Fonctionnalités implémentées
+###  Fonctionnalités implémentées
 
 #### 1. **Standardisation complète**
 - Tous les capteurs retournent maintenant un objet `SensorData`
@@ -75,11 +75,11 @@ Le **Data Transfer Object (DTO) Pattern** a été implémenté avec succès dans
 ## 🧪 Tests
 
 Tous les tests passent avec succès :
-- ✅ Création et manipulation de `SensorReading`
-- ✅ Création et manipulation de `SensorData`
-- ✅ Sérialisation et désérialisation
-- ✅ Format compact pour LoRa
-- ✅ Intégration avec plusieurs types de capteurs
+-  Création et manipulation de `SensorReading`
+-  Création et manipulation de `SensorData`
+-  Sérialisation et désérialisation
+-  Format compact pour LoRa
+-  Intégration avec plusieurs types de capteurs
 
 ## 🎯 Avantages obtenus
 
@@ -110,7 +110,7 @@ Tous les tests passent avec succès :
 
 L'implémentation du DTO Pattern est un succès complet ! Le système dispose maintenant d'une structure de données standardisée, extensible et maintenable pour toutes les données des capteurs. Cette implémentation améliore significativement la qualité du code et prépare le terrain pour des fonctionnalités avancées futures.
 
-**Statut** : ✅ Terminé et testé
-**Compatibilité** : ✅ 100% rétrocompatible
-**Documentation** : ✅ Complète
-**Tests** : ✅ Tous passés
+**Statut** :  Terminé et testé
+**Compatibilité** :  100% rétrocompatible
+**Documentation** :  Complète
+**Tests** :  Tous passés

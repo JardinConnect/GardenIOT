@@ -260,7 +260,7 @@ message = {
 device.communication.send(message)
 ```
 
-## ⚠️ Dépannage
+##  Dépannage
 
 ### Problèmes Courants
 

@@ -61,7 +61,7 @@ def add_child(idChild):
     data["children"].append(newChild)
     
     save_nodes(data)
-    print(f"✅ [DB] {idChild} ajouté")
+    print(f" [DB] {idChild} ajouté")
     return True
 
 def get_parent_id():

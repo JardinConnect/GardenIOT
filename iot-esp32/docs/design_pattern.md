@@ -150,7 +150,7 @@ interval = config.get('read_interval', default=60)
 lora_freq = config.get('lora', 'frequency', default=868.0)
 ```
 
-### ✅ Où l'appliquer dans le projet
+###  Où l'appliquer dans le projet
 
 | Classe | Raison |
 |--------|--------|
@@ -167,7 +167,7 @@ lora_freq = config.get('lora', 'frequency', default=868.0)
 Dans un projet IoT, on utilise **plusieurs types de capteurs** (DHT22, BMP280, BH1750, DS18B20, LM393...). Sans Factory :
 
 ```python
-# ❌ Sans Factory Pattern - code rigide et répétitif
+#  Sans Factory Pattern - code rigide et répétitif
 if sensor_type == "dht22":
     sensor = DHT22Sensor(pin=4)
 elif sensor_type == "bmp280":
@@ -180,7 +180,7 @@ elif sensor_type == "bh1750":
 Avec Factory :
 
 ```python
-# ✅ Avec Factory Pattern - simple et extensible
+#  Avec Factory Pattern - simple et extensible
 sensor = SensorFactory.create("dht22", pin=4)
 ```
 
@@ -299,7 +299,7 @@ dht = SensorFactory.create("dht22", name="temp_ext", pin=4)
 }
 ```
 
-### ✅ Avantages concrets
+###  Avantages concrets
 
 - **Ajouter un capteur** = créer une classe + une ligne `register()`
 - **Configuration dynamique** depuis un fichier JSON
@@ -320,7 +320,7 @@ Un device IoT peut communiquer via **plusieurs protocoles** :
 Sans Strategy, le code de communication serait **couplé** au reste de l'application :
 
 ```python
-# ❌ Sans Strategy - code couplé et difficile à modifier
+#  Sans Strategy - code couplé et difficile à modifier
 def send_data(data):
     if mode == "lora":
         # 50 lignes de code LoRa
@@ -520,7 +520,7 @@ comm.send(sensor_data)
 comm.set_strategy(wifi)
 ```
 
-### ✅ Avantages concrets
+###  Avantages concrets
 
 - **Changement de protocole** sans modifier le code métier
 - **Fallback automatique** si un protocole échoue
@@ -541,7 +541,7 @@ Dans un système IoT, **plusieurs modules** doivent réagir aux données des cap
 Sans Observer, chaque capteur devrait **connaître** tous les modules → **couplage fort**.
 
 ```python
-# ❌ Sans Observer - le capteur connaît tout le monde
+#  Sans Observer - le capteur connaît tout le monde
 def read_sensor():
     data = get_data()
     alert_manager.check(data)      # couplé à AlertManager
@@ -646,7 +646,7 @@ class AlertManager:
         else:
             if alert_key in self._alerts_active:
                 del self._alerts_active[alert_key]
-                print(f"  ✅ Alert cleared: {sensor}/{metric} = {value}")
+                print(f"   Alert cleared: {sensor}/{metric} = {value}")
 ```
 
 ### 🔍 Utilisation
@@ -669,7 +669,7 @@ event_bus.publish("sensor.data", {
 # → AlertManager ET Logger sont notifiés automatiquement
 ```
 
-### ✅ Avantages concrets
+###  Avantages concrets
 
 - **Découplage total** entre capteurs et modules de traitement
 - **Ajout d'un observer** sans modifier les capteurs
@@ -690,7 +690,7 @@ BOOT → PAIRING → ACTIVE → SLEEP → ACTIVE → ERROR → RECOVERY → ACTI
 Sans State Pattern, on obtient des `if/elif` interminables :
 
 ```python
-# ❌ Sans State Pattern
+#  Sans State Pattern
 while True:
     if state == "booting":
         # 20 lignes...
@@ -876,7 +876,7 @@ class DeviceManager:
             self._state.handle(self)
 ```
 
-### ✅ Avantages concrets
+###  Avantages concrets
 
 - **Chaque état est isolé** dans sa propre classe
 - **Transitions explicites** et faciles à suivre
@@ -1066,7 +1066,7 @@ class BMP280Sensor(BaseSensor):
         )
 ```
 
-### ✅ Avantages concrets
+###  Avantages concrets
 
 - **Pas de duplication** de la logique de cache, validation, formatage
 - **Nouveau capteur** = implémenter seulement `_read_raw()` et `_validate()`
@@ -1250,7 +1250,7 @@ class LM393Sensor(BaseSensor):
         )
 ```
 
-### ✅ Avantages concrets
+###  Avantages concrets
 
 - **Uniformité** : toutes les libs tierces exposent la même interface
 - **Remplacement facile** : changer de lib sans toucher au code métier
@@ -1438,7 +1438,7 @@ def send_with_protection(data):
     return result
 ```
 
-### ✅ Avantages concrets
+###  Avantages concrets
 
 - **Résilience** : le système survit aux pannes temporaires
 - **Backoff exponentiel** : évite de surcharger le réseau
@@ -1583,7 +1583,7 @@ payload = dto.to_dict()
 # → {'sensor': 'dht22', 'type': 'DHT22', 'timestamp': ..., 'readings': [...]}
 ```
 
-### ✅ Avantages concrets
+###  Avantages concrets
 
 - **Format unique** dans tout le système
 - **Double sérialisation** : compact (LoRa) ou complet (WiFi)
@@ -1771,7 +1771,7 @@ if __name__ == '__main__':
     main()
 ```
 
-### ✅ Avantages concrets
+###  Avantages concrets
 
 - **main.py** fait **3 lignes** de code
 - **Aucune connaissance** des sous-systèmes requise

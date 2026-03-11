@@ -26,14 +26,25 @@ class DS18B20Sensor(BaseSensor):
     def _read_raw(self):
         if not self.roms:
             print("No DS18B20 sensors found, cannot read temperature.")
-            return []
+            return None
         
-        # Conversion de température (attendre que le capteur mesure)
-        self.ds.convert_temp()
-        time.sleep_ms(750)
-        
-        # Lecture de chaque capteur
-        return {'temperature': self.ds.read_temp(0)}  # Lit le premier capteur trouvé (index 0)
+        try:
+            # Conversion de température (attendre que le capteur mesure)
+            self.ds.convert_temp()
+            time.sleep_ms(750)
+            
+            # Lecture de chaque capteur
+            return {'temperature': self.ds.read_temp(0)}  # Lit le premier capteur trouvé (index 0)
+        except Exception as e:
+            print(f"  [{self.name}] DS18B20 read failed: {e}")
+            return None
+    
+    def _validate(self, data):
+        if data is None:
+            return False
+            
+        temp = data.get('temperature')
+        return temp is not None and -55 <= temp <= 125  # Plage valide pour DS18B20
     
     def _read_raws(self):
         if not self.roms:

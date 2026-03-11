@@ -1,6 +1,6 @@
 {
   "device": {
-    "uid": "auto",
+    "uid": "4C01",
     "parent_id": "GATEWAY_PI",
     "send_interval": 60,
     "listen_timeout": 5000
@@ -12,10 +12,13 @@
     "bandwidth": 500000,
     "coding_rate": 5,
     "tx_power": 14,
-    "sync_word": 18,
     "preamble_length": 8,
     "crc": false,
     "spi_baudrate": 5000000,
+    "ack_enabled": true,
+    "ack_timeout_ms": 5000,
+    "max_retries": 5,
+    "listen_timeout_ms": 5000,
     "pins": {
       "sck": 18,
       "miso": 19,

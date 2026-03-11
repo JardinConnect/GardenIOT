@@ -46,7 +46,7 @@ class NormalState(State):
     def enter(self):
         """Active le mode normal"""
         print("🔄 Système en mode NORMAL")
-        self.gateway.lora_comm.set_timeout(0.1)  # Timeout normal
+        self.gateway.lora_comm.set_timeout(3.0)  # Timeout normal
     
     def exit(self):
         """Quitte le mode normal"""
@@ -72,7 +72,7 @@ class PairingState(State):
         import time
         print(f"🔗 Mode PAIRING activé ({self.duration}s)")
         self.end_time = time.time() + self.duration
-        self.gateway.lora_comm.set_timeout(0.5)  # Timeout plus long pour pairing
+        self.gateway.lora_comm.set_timeout(3.0)  # Timeout plus long pour pairing
         
         # Notifier via MQTT
         self.gateway.mqtt_comm.publish(

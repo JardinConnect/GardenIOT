@@ -3,16 +3,17 @@ Configuration du système Gateway
 """
 import board
 
-
-# Configuration par défaut
 DEFAULT_CONFIG = {
+    "gateway_uid": "GATEWAY_PI",
     "lora": {
         "frequency": 433.1,
         "bandwidth": 500000,
         "spreading_factor": 10,
         "coding_rate": 5,
+        "sync_word": 0x12,
         "preamble_length": 8,
-        "enable_crc": False,
+        "crc": False,
+        "listen_timeout": 5.0,
         "cs_pin": board.D5,
         "reset_pin": board.D25
     },
@@ -38,7 +39,4 @@ DEFAULT_CONFIG = {
 
 
 def load_config():
-    """Charge la configuration"""
-    # Pour l'instant, retourne la config par défaut
-    # Peut être étendu pour charger depuis un fichier
     return DEFAULT_CONFIG

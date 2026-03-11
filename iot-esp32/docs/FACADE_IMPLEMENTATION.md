@@ -136,12 +136,12 @@ device.run()
 
 ## Tests Validés
 
-✅ **DTO Integration** : Fonctionne parfaitement
+ **DTO Integration** : Fonctionne parfaitement
 - Création et manipulation des DTO
 - Sérialisation complète et compacte
 - Intégration avec les capteurs
 
-⚠️ **Hardware Tests** : Non testables sur PC
+ **Hardware Tests** : Non testables sur PC
 - Requiert un environnement MicroPython
 - Testable sur matériel ESP32 réel
 
@@ -201,7 +201,7 @@ while True:
 
 L'implémentation du Façade Pattern est un succès complet. Le système IoT dispose maintenant d'une architecture propre, bien structurée et facile à maintenir. La façade cache toute la complexité derrière une interface simple, tout en intégrant parfaitement tous les autres design patterns. Cette implémentation suit exactement le flux de données documenté et fournit une base solide pour les développements futurs.
 
-**Statut** : ✅ Implémentation complète et testée
-**Compatibilité** : ✅ 100% rétrocompatible  
-**Patterns intégrés** : ✅ 10/10 patterns
-**Documentation** : ✅ Complète et à jour
+**Statut** :  Implémentation complète et testée
+**Compatibilité** :  100% rétrocompatible  
+**Patterns intégrés** :  10/10 patterns
+**Documentation** :  Complète et à jour
