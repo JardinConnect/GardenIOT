@@ -4,6 +4,8 @@ Responsible for I2C, SPI buses and LoRa module setup.
 """
 
 from machine import SPI, Pin, I2C
+from lib.Lora import LoRa
+
 
 
 class HardwareManager:
@@ -26,7 +28,6 @@ class HardwareManager:
         bus_id = i2c_config.get('id', 0)
         
         self.i2c = I2C(bus_id, scl=Pin(scl), sda=Pin(sda), freq=freq)
-        print(f"[HardwareManager] I2C bus ready (SDA={sda}, SCL={scl})")
         return self.i2c
 
     def init_spi(self):
@@ -56,11 +57,7 @@ class HardwareManager:
         
         if not self.spi:
             self.init_spi()
-        
-        from lib.Lora import LoRa
-
-        print(f"[HardwareManager] SPI initialized: {self.spi}")
-        
+                
         # Create Pin objects (comme dans pins.py)
         cs = Pin(pins.get('cs', 5), Pin.OUT)
         rst = Pin(pins.get('rst', 14), Pin.OUT)

@@ -4,6 +4,7 @@ Implémente le Strategy Pattern pour la communication.
 """
 from communication.base_protocol import CommunicationProtocol
 import time
+import machine
 
 def log(msg):
     print(f"[LoRa] {msg}")
@@ -40,122 +41,63 @@ class LoRaProtocol(CommunicationProtocol):
     # PUBLIC METHODS
     # ===========================================================
     
-    # def send(self, message, expect_ack=True):
-    #     """
-    #     Envoie un message LoRa. Retente si pas d'ACK.
+    def send(self, message, expect_ack=False):
+        """
+        Envoie un message LoRa. Retente si pas d'ACK.
         
-    #     Args:
-    #         message: Dictionnaire avec 'type', 'datas', etc.
-    #         expect_ack: Si True, attend un ACK du gateway
+        Args:
+            message: Dictionnaire avec 'type', 'datas', etc.
+            expect_ack: Si True, attend un ACK du gateway
             
-    #     Returns:
-    #         True si succès (envoi + ACK si attendu), False sinon
-    #     """
-    #     log(f"Preparing to send message: {message}")
+        Returns:
+            True si succès (envoi + ACK si attendu), False sinon
+        """
+        log(f"Preparing to send message: {message}")
         
-    #     # Construire le message
-    #     built_message = self._build_message(message)
-    #     padded_message = "XXXX" + built_message
-    #     frame = padded_message.encode('utf-8')
-        
-    #     log(f"Built message: {built_message}")
-
-    #     # Vider le buffer de réception avant d'envoyer pour éviter les interférences
-    #     while self._lora.spi.read(1):
-    #     pass
-        
-    #     # Essayer plusieurs fois
-    #     for attempt in range(1, self._max_retries + 1):
-    #         log(f"Send attempt {attempt}/{self._max_retries}")
-            
-    #         try:
-    #             # Envoyer via le hardware LoRa
-    #             self._lora.send(frame)
-    #             self._stats['sent'] += 1
-    #             log("Message sent successfully")
-    #         except Exception as e:
-    #             log(f"Send error: {e}")
-    #             self._stats['errors'] += 1
-    #             if attempt < self._max_retries:
-    #                 time.sleep(0.5)
-    #             continue
-            
-    #         # Si on n'attend pas d'ACK, c'est terminé
-    #         if not expect_ack:
-    #             self._lora.recv()  # Remettre en mode écoute
-    #             log("Message sent (no ACK expected)")
-    #             return True
-            
-    #         # Attendre l'ACK
-    #         if self._wait_for_ack():
-    #             log("ACK received successfully")
-    #             self._lora.recv()  # Remettre en mode écoute
-    #             return True
-    #         else:
-    #             log(f"No ACK received, retrying ({attempt}/{self._max_retries})")
-    #             if attempt < self._max_retries:
-    #                 time.sleep(0.5)
-        
-    #     # Toutes les tentatives ont échoué
-    #     self._stats['ack_fail'] += 1
-    #     log("Failed: no ACK after all attempts")
-    #     self._lora.recv()  # Remettre en mode écoute
-    #     return False
-
-    def send(self, message, expect_ack=True):
-        """Envoi robuste avec diagnostics"""
-        log(f"Preparing to send message 2: {message}")
-
-        # 1. Vérifier l'état du module
-        try:
-            version = self._lora._read(0x42)
-            log(f"LoRa module version: {version}")
-        except Exception as e:
-            log(f"LoRa module check failed: {e}")
-            return False
-
-        # 2. Vider le buffer SPI
-        try:
-            while self._lora.spi.read(1):
-                pass
-            log("SPI buffer cleared")
-        except Exception as e:
-            log(f"SPI buffer clear failed: {e}")
-
-        # 3. Désactiver les interruptions
-        self._lora.set_dio_mapping(None)
-
         # Construire le message
         built_message = self._build_message(message)
         padded_message = "XXXX" + built_message
         frame = padded_message.encode('utf-8')
-
+        
         log(f"Built message: {built_message}")
-
-        # 4. Essayer l'envoi
-        try:
-            send_start = time.time()
-            self._lora.send(frame)
-            send_duration = time.time() - send_start
-
-            if send_duration > 1.0:
-                log(f"WARNING: Send took {send_duration:.2f}s")
-                raise Exception("Send timeout")
-
-            self._stats['sent'] += 1
-            log("Message sent successfully")
-            return True
-
-        except Exception as e:
-            log(f"Send error: {e}")
-            self._stats['errors'] += 1
-            return False
-
-        finally:
-            # 5. Réactiver les interruptions
-            self._lora.set_dio_mapping([self._lora.DIO0])
-            # 6. Remettre en mode écoute
-            self._lora.recv()
+        
+        # Essayer plusieurs fois
+        for attempt in range(1, self._max_retries + 1):
+            log(f"Send attempt {attempt}/{self._max_retries}")
+            
+            try:
+                # Envoyer via le hardware LoRa
+                self._lora.send(frame)
+                self._stats['sent'] += 1
+                log("Message sent successfully")
+            except Exception as e:
+                log(f"Send error: {e}")
+                self._stats['errors'] += 1
+                if attempt < self._max_retries:
+                    time.sleep(0.5)
+                continue
+            
+            # Si on n'attend pas d'ACK, c'est terminé
+            if not expect_ack:
+                self._lora.recv()  # Remettre en mode écoute
+                log("Message sent (no ACK expected)")
+                return True
+            
+            # Attendre l'ACK
+            if self._wait_for_ack():
+                log("ACK received successfully")
+                self._lora.recv()  # Remettre en mode écoute
+                return True
+            else:
+                log(f"No ACK received, retrying ({attempt}/{self._max_retries})")
+                if attempt < self._max_retries:
+                    time.sleep(0.5)
+        
+        # Toutes les tentatives ont échoué
+        self._stats['ack_fail'] += 1
+        log("Failed: no ACK after all attempts")
+        self._lora.recv()  # Remettre en mode écoute
+        return False
     
     def receive(self, timeout_ms=None):
         """
@@ -362,7 +304,7 @@ class LoRaProtocol(CommunicationProtocol):
             parts = frame.split('|')
             
             # Validation du format de base
-            if len(parts) < 6 or parts[0] != 'B' or parts[-1] != 'E':
+            if len(parts) < 5 or parts[0] != 'B' or parts[-1] != 'E':
                 log("Invalid message format - missing B| or |E")
                 return None
             

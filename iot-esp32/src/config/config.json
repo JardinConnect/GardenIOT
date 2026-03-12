@@ -41,7 +41,7 @@
       "type": "dht22",
       "name": "air",
       "enabled": true,
-      "pin": 27,
+      "pin": 26,
       "codes": { "temperature": "TA", "humidity": "HA" },
       "retry": 3,
       "delay_ms": 2000,
@@ -54,7 +54,7 @@
       "type": "ds18b20",
       "name": "sol_temp",
       "enabled": true,
-      "pin": 4,
+      "pin": 22,
       "codes": { "temperature": "TS" },
       "alerts": {
         "temperature": { "min": -10, "max": 50 }
@@ -83,6 +83,21 @@
       "alerts": {
         "soil_moisture": { "min": 1, "max": null }
       }
+    },
+    {
+      "type": "lm393",
+      "name": "sol_humidity",
+      "enabled": true,
+      "pin": 36,
+      "index": 1,
+      "codes": { "soil_moisture": "HS" },
+      "params": {
+        "dry_value": 3500,
+        "wet_value": 900
+      },
+      "alerts": {
+        "soil_moisture": { "min": 1, "max": null }
+      }
     }
   ],
 
@@ -92,7 +107,7 @@
   },
 
   "power": {
-    "sleep_interval": 15,
+    "sleep_interval": 300000,
     "reset_duration_ms": 10000
   }
 }

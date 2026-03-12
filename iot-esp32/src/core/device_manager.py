@@ -90,12 +90,9 @@ class DeviceManager:
             print(f"[DeviceManager] Sensor '{sensor_name}' has metrics: {metrics}")
 
     def _initialize_hardware(self):
-        """Initialize hardware components (called once)."""
-        # if self._needs_i2c():
-        
+        """Initialize hardware components (called once)."""        
         self._lora_hw = self.hardware.init_lora_hardware()
         print(f"[DeviceManager] LORA hardware {self._lora_hw} initialized")
-        self.hardware.init_i2c()
         self._rtc = self.hardware.init_rtc()
     
     def _initialize_communication(self):
@@ -154,58 +151,21 @@ class DeviceManager:
             print("[DeviceManager.run_cycle] No valid data to send")
             return
 
-        # 3. Send message (WITHOUT waiting for ACK)
+        # 3. Prepare message
         message = {'type': 'D', 'datas': payload}
-        print(f"[DeviceManager.run_cycle] Sending message: {message}")
+        print(f"[DeviceManager.run_cycle] Sending message ack test: {message}")
 
-        # SEND WITHOUT ACK (like in test)
-        send_success = self.communication.send(message, expect_ack=False)
+        # SEND WITH ACK
+        send_success = self.communication.send(message, expect_ack=True)
         if not send_success:
             print("[DeviceManager.run_cycle] Failed to send message")
             return
-
-        # 4. Wait for ACK manually (like in test)
-        print("[DeviceManager.run_cycle] Waiting for ACK...")
-        ack_received = self._wait_for_ack()
-        if ack_received:
-            print("[DeviceManager.run_cycle] ACK received successfully!")
-        else:
-            print("[DeviceManager.run_cycle] No ACK received")
 
         # 5. Listen for other messages
         print("[DeviceManager.run_cycle] Listening for messages...")
         self._listen_for_messages()
 
         print("[DeviceManager.run_cycle] EXIT - Cycle completed")
-
-    def _wait_for_ack(self, timeout=5):
-        """Wait for ACK response (like in test_lora.py)"""
-        print("[DeviceManager._wait_for_ack] Waiting for ACK...")
-        start_time = time.time()
-
-        while (time.time() - start_time) < timeout:
-            remaining = timeout - (time.time() - start_time)
-            print(f"[DeviceManager._wait_for_ack] {remaining:.1f}s remaining...")
-
-            # Check for incoming messages
-            message = self.communication.receive(2000)
-            if message:
-                msg_type = message.get('type', 'UNKNOWN')
-                print(f"[DeviceManager._wait_for_ack] Received: {msg_type}")
-
-                if msg_type in ['ACK', 'PA']:
-                    print("[DeviceManager._wait_for_ack] ACK received!")
-                    return True
-                else:
-                    print(f"[DeviceManager._wait_for_ack] Non-ACK message: {message}")
-            else:
-                print("[DeviceManager._wait_for_ack] No message")
-
-            time.sleep(0.5)
-
-        print("[DeviceManager._wait_for_ack] Timeout - no ACK")
-        return False
-    
 
     def _format_sensor_data(self, sensor_data):
         """

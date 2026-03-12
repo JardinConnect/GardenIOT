@@ -201,7 +201,7 @@ class LoRaCommunication:
         try:
             from datetime import datetime
             timestamp = datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
-            ack_message = f"B|ACK|{timestamp}|{gateway_uid}|{target_uid}|E"
+            ack_message = f"B|ACK|{timestamp}|{target_uid}|E"
             
             print(f"[LoRaCommunication.send_ack] ACK message: {ack_message}")
             

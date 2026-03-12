@@ -11,6 +11,10 @@ import ujson
 from communication.lora_protocol import LoRaProtocol
 from core.hardware_manager import HardwareManager
 from communication.communication_manager import CommunicationManager
+from core.device_manager import DeviceManager
+from core.states import ActiveState
+
+
 
 
 # Configuration
@@ -23,25 +27,30 @@ with open(CONFIG_FILE, "r") as f:
 print("=== ESP32 LoRa Communication Test 2 ===")
 print(f"Device UID: {config['device']['uid']}")
 print(f"LoRa Config: freq={config['lora']['frequency']}MHz, SF={config['lora']['spreading_factor']}, BW={config['lora']['bandwidth']}")
+device = DeviceManager(config_path="/src/config/config.json")    
+    
+# Initialize all components
+device.initialize()
+    
+# # Initialize hardware manager to get LoRa hardware
+# hardware_manager = HardwareManager(config)
+# hardware_manager.init_i2c()  # Ensure I2C is initialized before RTC
+# lora_hw = hardware_manager.init_lora_hardware()
 
-# Initialize hardware manager to get LoRa hardware
-hardware_manager = HardwareManager(config)
-lora_hw = hardware_manager.init_lora_hardware()
-
-# Get RTC (if available)
-rtc = hardware_manager.init_rtc()
-print("config =", config["lora"])
-# Initialize LoRa protocol with proper parameters
-lora_protocol = LoRaProtocol(
-    lora=lora_hw,
-    uid=config["device"]["uid"],
-    rtc=rtc,
-    config=config["lora"]
-)
+# # Get RTC (if available)
+# rtc = hardware_manager.init_rtc()
+# print("config =", config["lora"])
+# # Initialize LoRa protocol with proper parameters
+# lora_protocol = LoRaProtocol(
+#     lora=lora_hw,
+#     uid=config["device"]["uid"],
+#     rtc=rtc,
+#     config=config["lora"]
+# )
 
 # Test function to send message multiple times and wait for ACK
 def test_lora_communication():
-    print("Starting LoRa communication test...")
+    print("Starting LoRa communication test... test version 3 with multiple attempts and better debugging")
     
     max_attempts = 3  # Try sending 3 times
     attempt = 1
@@ -55,20 +64,25 @@ def test_lora_communication():
             'datas': '1HS24;1TS31'
         }
         print(f"Sending test message: {test_message}")
-        print("lora protocol config:", lora_protocol)
-        # Send the message (don't wait for ACK here, we'll handle it manually)
-        communication = CommunicationManager(
-            primary_strategy=lora_protocol,
-            fallback_strategy=None
-        )
-        send_success = communication.send(test_message, expect_ack=False)
-        print(f"Message send result: {send_success}")
+
+        # device.state_manager.set_state(ActiveState())
+        # device.state_manager.handle()
+        device.run_cycle()  # Use run_cycle which includes sending message without ACK and waiting for response
+
+        # print("lora protocol config:", device.protocol)
+        # # Send the message (don't wait for ACK here, we'll handle it manually)
+        # communication = CommunicationManager(
+        #     primary_strategy=device.protocol,
+        #     fallback_strategy=None
+        # )
+        # send_success = device.communication.send(test_message, expect_ack=False)
+        # print(f"Message send result: {send_success}")
         
-        if not send_success:
-            print("Failed to send message")
-            attempt += 1
-            time.sleep(2)  # Wait before retrying
-            continue
+        # if not send_success:
+        #     print("Failed to send message")
+        #     attempt += 1
+        #     time.sleep(2)  # Wait before retrying
+        #     continue
         
         # Add delay to ensure we're in receive mode before Pi5 sends ACK
         print("DEBUG: Waiting 2 seconds to ensure in receive mode before ACK...")
@@ -86,7 +100,7 @@ def test_lora_communication():
             
             # Check for incoming messages using polling
             print("DEBUG: Checking for incoming messages using polling...")
-            received_message = lora_protocol.receive(2000)  # 2 second timeout
+            received_message = device.communication.receive(2000)  # 2 second timeout
             print(f"DEBUG: lora_protocol.receive() returned: {received_message}")
             
             if received_message:
