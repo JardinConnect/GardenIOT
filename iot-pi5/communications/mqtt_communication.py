@@ -36,11 +36,11 @@ class MqttCommunication:
             self.client.on_message = self._on_message
             
             # Configuration de la connexion
-            if self.config.get("username") and self.config.get("password"):
-                self.client.username_pw_set(
-                    self.config["username"],
-                    self.config["password"]
-                )
+            # if self.config.get("username") and self.config.get("password"):
+            #     self.client.username_pw_set(
+            #         self.config["username"],
+            #         self.config["password"]
+            #     )
             
             # Connexion au broker
             self.connect()
@@ -111,26 +111,18 @@ class MqttCommunication:
     
     def publish(self, topic: str, payload: Dict[str, Any], qos: int = 1) -> bool:
         """Publie un message sur un topic"""
+        print(f" MQTT publish... {self.connected=}, {topic=}, {payload=}")
         if not self.connected:
-            print(" Impossible de publier - non connecté")
             return False
         
         try:
-            # Convertir le payload en JSON
             if not isinstance(payload, str):
                 payload = json.dumps(payload)
             
             result = self.client.publish(topic, payload, qos=qos)
-            
-            if result.rc == mqtt.MQTT_ERR_SUCCESS:
-                print(f"📤 MQTT publié sur {topic}")
-                return True
-            else:
-                print(f" Échec publication MQTT (code {result.rc})")
-                return False
-                
+            return result.rc == mqtt.MQTT_ERR_SUCCESS
         except Exception as e:
-            print(f" Erreur publication MQTT: {e}")
+            print(f" Erreur publication MQTT sur {topic}: {e}")
             return False
     
     def subscribe(self, topic: str, qos: int = 1):
@@ -161,6 +153,7 @@ class MqttCommunication:
     def _subscribe_to_topics(self):
         """S'abonne à tous les topics nécessaires"""
         topics = [
+            ("garden/analytics", 1),
             ("garden/alerts/config/+", 1),
             ("garden/pairing/request", 0),
             ("garden/pairing/unpair/+", 0),

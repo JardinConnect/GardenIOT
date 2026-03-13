@@ -69,18 +69,32 @@ class GatewayCore:
         self.main_loop()
     
     def main_loop(self):
-        """Boucle principale du système"""
+        """
+        Boucle principale du système Gateway
+        
+        Cycle de traitement:
+        1. Vérifie les messages LoRa entrants (prioritaire)
+        2. Gère l'état courant (Normal/Pairing/Maintenance)
+        3. Vérifie la connexion MQTT
+        4. Met à jour les statistiques
+        
+        Le cycle LoRa → MQTT se fait via:
+        process_lora_messages() → MessageRouter → MQTT Broker
+        """
         start_time = time.time()
         try:
             while self.running:
                 # 1. Vérifier les messages LoRa (PRIORITAIRE)
+                #    Ce qui déclenche: Réception → ACK → Routing MQTT
                 self.process_lora_messages()
                 
-                # 2. Gérer l'état courant
+                # 2. Gérer l'état courant (State Pattern)
+                #    Ex: temporisation du mode pairing, etc.
                 if self.current_state:
                     self.current_state.handle()
                 
                 # 3. Vérifier la connexion MQTT
+                #    (Les messages entrants sont gérés par callbacks)
                 self.process_mqtt_messages()
                 
                 # 4. Mettre à jour les statistiques
@@ -94,57 +108,32 @@ class GatewayCore:
 
     def process_lora_messages(self):
         """Traite les messages LoRa entrants"""
-        print("[GatewayCore.process_lora_messages] ENTRY - Checking for LoRa messages...")
-        
         try:
-            # Recevoir un message
             message = self.lora_comm.receive()
             
             if not message:
-                print("[GatewayCore.process_lora_messages] EXIT - No message received")
                 return
             
             self.stats["messages_received"] += 1
-            print(f"[GatewayCore.process_lora_messages] Raw message received: {message}")
             
             # Parser le message
             lora_msg = LoRaMessage.from_lora_format(message)
             
             if not lora_msg:
-                print(f"[GatewayCore.process_lora_messages] ERROR - Invalid LoRa message format: {message}")
                 self.stats["errors"] += 1
-                print("[GatewayCore.process_lora_messages] EXIT - Invalid message")
                 return
-            
-            # Log du message reçu
-            print(f"📡 [{lora_msg.message_type.value}] de {lora_msg.uid}: {lora_msg.data}")
             
             # Envoyer ACK immédiatement (sauf pour les ACK entrants)
             if lora_msg.message_type != MessageType.ACK:
                 gateway_uid = self.config.get("gateway_uid", "GATEWAY_PI")
-                ack_success = self.lora_comm.send_ack(lora_msg.uid, gateway_uid)
-                
-                if ack_success:
-                    print(f"[GatewayCore.process_lora_messages] ACK sent successfully to {lora_msg.uid}")
-                else:
-                    print(f"[GatewayCore.process_lora_messages] WARNING - Failed to send ACK to {lora_msg.uid}")
-                    self.stats["errors"] += 1
-            else:
-                print(f"[GatewayCore.process_lora_messages] ACK received from {lora_msg.uid} (no ACK needed)")
+                self.lora_comm.send_ack(lora_msg.uid, gateway_uid)
             
             # Router le message vers MQTT (sauf pour les ACK)
             if lora_msg.message_type != MessageType.ACK:
-                print(f"[GatewayCore.process_lora_messages] Routing message to MQTT...")
                 self.message_router.route_from_lora(lora_msg)
-            else:
-                print(f"[GatewayCore.process_lora_messages] ACK message - no MQTT routing needed")
-            
-            print("[GatewayCore.process_lora_messages] EXIT - Message processed successfully")
-            
+                
         except Exception as e:
-            print(f"[GatewayCore.process_lora_messages] ERROR: {e}")
             self.stats["errors"] += 1
-            print("[GatewayCore.process_lora_messages] EXIT - Error occurred")
     
     # def _send_ack(self, target_uid: str):
     #     """Envoie un ACK à un device ESP32"""

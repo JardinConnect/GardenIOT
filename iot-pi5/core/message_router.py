@@ -16,7 +16,7 @@ class MessageRouter:
         
         # Mappings des topics MQTT
         self.mqtt_topics = {
-            "sensor_data": "garden/sensors/{uid}",
+            "sensor_data": "garden/analytics",
             "pairing_request": "garden/pairing/request",
             "pairing_success": "garden/pairing/success/{uid}",
             "alert_config": "garden/alerts/config/{uid}",
@@ -55,38 +55,24 @@ class MessageRouter:
     # Handlers pour messages LoRa
     def _handle_lora_data(self, message: LoRaMessage):
         """Traite les données capteurs"""
-        print(f"[MessageRouter._handle_lora_data] ENTRY - Processing DATA message from {message.uid}")
-        
         # Vérifier si l'enfant est autorisé
-        if not self.gateway.child_repo.is_child_authorized(message.uid):
-            print(f"[MessageRouter._handle_lora_data] WARNING - Unauthorized child: {message.uid}")
-            return
+        print(f" Traitement message DATA de {message.uid}")
+        # if not self.gateway.child_repo.is_child_authorized(message.uid):
+        #     return
         
-        # Parser les données capteurs (conserve le format original)
+        # Parser les données capteurs
         sensor_data = SensorData.from_lora_data(message.data)
-        print(f"[MessageRouter._handle_lora_data] Sensor data parsed: {sensor_data.parsed_values}")
         
         # Construire le payload MQTT
         payload = {
             "uid": message.uid,
             "timestamp": message.timestamp,
-            "raw_data": sensor_data.raw_data,  # Format original pour le backend
-            "parsed": sensor_data.parsed_values  # Valeurs parsées
+            "payload": sensor_data.parsed_values
         }
         
-        # Publier sur MQTT
-        topic = self.mqtt_topics["sensor_data"].format(uid=message.uid)
-        
-        try:
-            publish_success = self.gateway.mqtt_comm.publish(topic, payload, qos=1)
-            if publish_success:
-                print(f"[MessageRouter._handle_lora_data] SUCCESS - Data sent to MQTT: {topic}")
-            else:
-                print(f"[MessageRouter._handle_lora_data] ERROR - Failed to publish to MQTT")
-        except Exception as e:
-            print(f"[MessageRouter._handle_lora_data] ERROR - MQTT publish error: {e}")
-        
-        print("[MessageRouter._handle_lora_data] EXIT - Data message processed")
+        # 1. Publier sur le topic analytics
+        sensor_topic = self.mqtt_topics["sensor_data"]
+        self.gateway.mqtt_comm.publish(sensor_topic, payload, qos=1)
     
     def _handle_lora_pairing(self, message: LoRaMessage):
         """Traite les demandes de pairing"""

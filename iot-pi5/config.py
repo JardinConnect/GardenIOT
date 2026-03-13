@@ -18,11 +18,11 @@ DEFAULT_CONFIG = {
         "reset_pin": board.D25
     },
     "mqtt": {
-        "broker_host": "localhost",
+        "broker_host": "127.0.0.1",
         "broker_port": 1883,
         "client_id": "garden-gateway-pi5",
-        "username": None,
-        "password": None,
+        "username": "mqtt_user",
+        "password": "mqtt_password",
         "keepalive": 60,
         "qos": 1
     },

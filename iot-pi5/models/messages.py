@@ -136,7 +136,7 @@ class SensorData:
                 
                 if code and value_str:
                     value = float(value_str)
-                    sensor_key = f"{code}:{index}"
+                    sensor_key = f"{index}{code}"
                     sensors[sensor_key] = value
                     
             except (ValueError, IndexError):
@@ -148,7 +148,6 @@ class SensorData:
     def to_dict(self) -> Dict[str, Any]:
         """Convertit en dictionnaire pour JSON - conserve le format original"""
         return {
-            "raw": self.raw_data,  # Format original pour le backend
             "sensors": self.parsed_values,  # Valeurs parsées
             "timestamp": datetime.now().isoformat()
         }
