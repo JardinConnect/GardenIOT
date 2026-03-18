@@ -27,7 +27,7 @@ DEFAULT_CONFIG = {
         "qos": 1
     },
     "repository": {
-        "file_path": "child.json"
+        "file_path": "repositories/child.json"
     },
     "system": {
         "pairing_duration": 30,

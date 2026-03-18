@@ -151,13 +151,12 @@ class MqttCommunication:
         self.message_callback = callback
     
     def _subscribe_to_topics(self):
-        """S'abonne à tous les topics nécessaires"""
+        """S'abonne à tous les topics nécessaires pour consommer les messages"""
         topics = [
-            ("garden/analytics", 1),
-            ("garden/alerts/config/+", 1),
+            ("garden/alerts/config", 1),
             ("garden/pairing/request", 0),
-            ("garden/pairing/unpair/+", 0),
-            ("garden/system/command", 0)
+            ("garden/pairing/unpair", 0),
+            ("garden/devices/command", 0)
         ]
         
         for topic, qos in topics:
@@ -182,7 +181,7 @@ class MqttCommunication:
         """Callback appelé lors de la réception d'un message"""
         try:
             payload = msg.payload.decode('utf-8')
-            print(f" MQTT reçu sur {msg.topic}: {payload[:100]}...")
+            print(f" MQTT reçu sur {msg.topic}: {payload}...")
             
             # Appeler le callback si défini
             if self.message_callback:

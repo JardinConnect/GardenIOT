@@ -79,31 +79,71 @@ class ConfigManager:
         Set configuration value using dot notation.
         
         Args:
-            key_path: dot-separated path (e.g., 'device.uid')
+            key_path: dot-separated path (e.g., 'device.uid' or 'sensors.0.alerts.temp')
             value: value to set
         """
         keys = key_path.split('.')
         config = self._config
         
-        for key in keys[:-1]:
-            if key not in config:
-                config[key] = {}
-            config = config[key]
+        for i, key in enumerate(keys[:-1]):
+            # Check if current key is a numeric index for array access
+            if key.isdigit():
+                # Convert to integer for array indexing
+                index = int(key)
+                # Ensure the parent is a list and has enough elements
+                if isinstance(config, list):
+                    # Extend list if needed with empty dicts
+                    while len(config) <= index:
+                        config.append({})
+                else:
+                    # Convert dict to list if we're trying to use numeric index
+                    config = [config] if config else []
+                    while len(config) <= index:
+                        config.append({})
+                config = config[index]
+            else:
+                # Regular dictionary key
+                if key not in config:
+                    config[key] = {}
+                config = config[key]
         
-        config[keys[-1]] = value
+        # Handle the last key
+        last_key = keys[-1]
+        if last_key.isdigit():
+            # Numeric index for array
+            index = int(last_key)
+            if isinstance(config, list):
+                while len(config) <= index:
+                    config.append({})
+                config[index] = value
+            else:
+                # Convert to list if needed
+                config = [config] if config else []
+                while len(config) <= index:
+                    config.append({})
+                config[index] = value
+        else:
+            # Regular dictionary key
+            config[last_key] = value
     
-    def save(self, config_path='/src/config/config.json'):
+    def save(self, config_path='/src/config/config.json', read_after_save=False):
         """Save configuration to JSON file"""
         try:
             with open(config_path, 'w') as f:
-                json.dump(self._config, f, indent=2)
+                json.dump(self._config, f)
             print(f"[ConfigManager] Configuration saved to {config_path}")
+            # Lire et afficher le contenu du fichier config.json
+            if read_after_save:
+                with open('/src/config/config.json', 'r') as f:
+                    config_content = f.read()
+                    print("Contenu du fichier config.json :")
+                    print(config_content)
         except Exception as e:
             print(f"[ConfigManager] Error saving config: {e}")
 
-    def get_sensor_codes(self, sensor_name):
+    def get_sensor_identifier(self, sensor_name):
         """
-        Get sensor codes for a specific sensor.
+        Get sensor identifier for a specific sensor.
 
         Args:
             sensor_name: name of the sensor
@@ -119,12 +159,13 @@ class ConfigManager:
         for sensor in sensors:
             if sensor.get('name') == sensor_name:
                 codes = sensor.get('codes', {})
+                index = sensor.get('index', 1)
 
                 if sensor.get('enabled', False) and not codes:
                     raise ValueError(
                         f"Sensor '{sensor_name}' is enabled but has no codes defined"
                     )
 
-                return codes
+                return codes, index
 
-        return {}
+        raise ValueError(f"Sensor '{sensor_name}' not found in configuration")

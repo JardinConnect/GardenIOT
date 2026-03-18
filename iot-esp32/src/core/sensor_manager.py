@@ -83,35 +83,22 @@ class SensorManager:
     
     def read_all_sensors(self):
         """
-        Read all sensors and publish events.
-        
+        Read all sensors and return raw data in compact format.
         Returns:
-            dict: {sensor_name: sensor_data}
+            dict: {sensor_name: {index_code: value, ...}}
+            Example: {"air": {"1TA": 25.3, "1HA": 45.0}, "soil": {"1TS": 22.1}}
         """
         results = {}
-        
+
         for name, sensor in self.sensors.items():
             try:
                 dto = sensor.read()
-                
                 if dto and dto.is_valid:
-                    results[name] = dto.to_dict()
-                    
-                    # Publish sensor data event (Observer Pattern)
-                    self.event_bus.publish('sensor.data', {
-                        'sensor': name,
-                        'data': dto.to_dict()
-                    })
-                
+                    codes, index = self.config.get_sensor_identifier(name)
+                    results[name] = dto.to_compact(codes, index)
             except Exception as e:
                 print(f"[SensorManager] Error reading {name}: {e}")
-                
-                # Publish error event
-                self.event_bus.publish('sensor.read_error', {
-                    'sensor': name,
-                    'error': str(e)
-                })
-        
+
         return results
     
     def read_sensor(self, sensor_name):

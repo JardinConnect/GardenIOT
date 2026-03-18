@@ -4,9 +4,11 @@ Cœur du système Gateway - Classe principale
 import time
 import json
 from typing import Optional, Dict, Any
+from concurrent.futures import ThreadPoolExecutor
 from models.states import SystemState, NormalState, PairingState, MaintenanceState
 from models.messages import LoRaMessage, MqttMessage, MessageType
-
+from core.event_bus import EventBus
+from core.message_queu import MessageQueue
 
 class GatewayCore:
     """
@@ -24,6 +26,8 @@ class GatewayCore:
         self.mqtt_comm = None
         self.child_repo = None
         self.message_router = None
+        self.event_bus = EventBus()
+        self.message_queue = None
         
         # État du système
         self.current_state = None
@@ -40,6 +44,11 @@ class GatewayCore:
             "errors": 0,
             "uptime": 0
         }
+
+        self.pending_messages = {}  # {esp_uid: [message1, message2, ...]
+        self.lora_thread = None
+        self.lora_running = False
+
     
     def initialize_components(self, lora_comm, mqtt_comm, child_repo, message_router):
         """Initialise les composants du système"""
@@ -52,6 +61,14 @@ class GatewayCore:
         self.lora_comm.initialize()
         self.mqtt_comm.initialize()
         self.child_repo.initialize()
+        self.message_queue = MessageQueue(self)
+
+        # Lier le callback MQTT et LoRa au MessageRouter
+        self.mqtt_comm.set_message_callback(self.message_router.route_from_mqtt)
+        self.lora_comm.set_message_callback(self.message_router.route_from_lora)
+
+        # S'abonner aux événements
+        # self.event_bus.subscribe("esp32.available", self._on_esp_available)
     
     def start(self):
         """Démarre le système Gateway"""
@@ -63,42 +80,69 @@ class GatewayCore:
         self.running = True
         self.stats["uptime"] = time.time()
         
+        # Démarrer le thread LoRa
+        self._start_lora_thread()
+        
         print(" Système prêt")
         
         # Boucle principale
         self.main_loop()
     
+    def _start_lora_thread(self):
+        """Démarre un thread dédié pour la réception LoRa"""
+        import threading
+        self.lora_running = True
+        self.lora_thread = threading.Thread(
+            target=self._lora_receiver_loop,
+            name="LoRaReceiver",
+            daemon=True
+        )
+        self.lora_thread.start()
+        print("📡 Thread LoRa démarré")
+    
+    def _lora_receiver_loop(self):
+        """Boucle dédiée à la réception des messages LoRa"""
+        print("📡 Thread LoRa: démarré")
+        try:
+            while self.lora_running and self.running:
+                try:
+                    # Appeler receive() qui a déjà un timeout interne de 2 secondes
+                    # et déclenchera le callback si message reçu
+                    self.lora_comm.receive()
+                    # Pas besoin de sleep ici car receive() est bloquant avec timeout
+                except Exception as e:
+                    print(f"📡 Thread LoRa: erreur {e}")
+                    time.sleep(1)  # Attendre avant de réessayer en cas d'erreur
+        except Exception as e:
+            print(f"📡 Thread LoRa: erreur fatale {e}")
+        print("📡 Thread LoRa: arrêté")
+
     def main_loop(self):
         """
         Boucle principale du système Gateway
         
         Cycle de traitement:
-        1. Vérifie les messages LoRa entrants (prioritaire)
-        2. Gère l'état courant (Normal/Pairing/Maintenance)
-        3. Vérifie la connexion MQTT
-        4. Met à jour les statistiques
+        1. Gère l'état courant (Normal/Pairing/Maintenance)
+        2. Vérifie la connexion MQTT
+        3. Met à jour les statistiques
         
-        Le cycle LoRa → MQTT se fait via:
-        process_lora_messages() → MessageRouter → MQTT Broker
+        La réception LoRa est gérée par un thread dédié
         """
         start_time = time.time()
         try:
             while self.running:
-                # 1. Vérifier les messages LoRa (PRIORITAIRE)
-                #    Ce qui déclenche: Réception → ACK → Routing MQTT
-                self.process_lora_messages()
-                
-                # 2. Gérer l'état courant (State Pattern)
-                #    Ex: temporisation du mode pairing, etc.
+                # 1. Gérer les états
                 if self.current_state:
                     self.current_state.handle()
-                
-                # 3. Vérifier la connexion MQTT
-                #    (Les messages entrants sont gérés par callbacks)
+
+                # 2. Vérifier MQTT (déjà géré par callbacks)
                 self.process_mqtt_messages()
                 
-                # 4. Mettre à jour les statistiques
+                # 3. Mettre à jour les statistiques
                 self.stats["uptime"] = time.time() - start_time
+                
+                # Petit délai pour éviter de saturer le CPU
+                time.sleep(0.1)
                 
         except KeyboardInterrupt:
             self.shutdown("Arrêt demandé par l'utilisateur")
@@ -106,34 +150,37 @@ class GatewayCore:
             self.shutdown(f"Erreur fatale: {e}", True)
     
 
-    def process_lora_messages(self):
-        """Traite les messages LoRa entrants"""
-        try:
-            message = self.lora_comm.receive()
+    # def process_lora_messages(self):
+    #     """Traite les messages LoRa entrants"""
+    #     try:
+    #         message = self.lora_comm.receive()
             
-            if not message:
-                return
+    #         if not message:
+    #             return
             
-            self.stats["messages_received"] += 1
+    #         self.stats["messages_received"] += 1
             
-            # Parser le message
-            lora_msg = LoRaMessage.from_lora_format(message)
+    #         # Parser le message
+    #         lora_msg = LoRaMessage.from_lora_format(message)
             
-            if not lora_msg:
-                self.stats["errors"] += 1
-                return
+    #         if not lora_msg:
+    #             self.stats["errors"] += 1
+    #             return
+
+    #          # Publier un événement "ESP32 disponible"
+    #         self.event_bus.publish("esp32.available", lora_msg.uid)
             
-            # Envoyer ACK immédiatement (sauf pour les ACK entrants)
-            if lora_msg.message_type != MessageType.ACK:
-                gateway_uid = self.config.get("gateway_uid", "GATEWAY_PI")
-                self.lora_comm.send_ack(lora_msg.uid, gateway_uid)
+    #         # Envoyer ACK immédiatement (sauf pour les ACK entrants)
+    #         if lora_msg.message_type != MessageType.ACK:
+    #             gateway_uid = self.config.get("gateway_uid", "GATEWAY_PI")
+    #             self.lora_comm.send_ack(lora_msg.uid, gateway_uid)
             
-            # Router le message vers MQTT (sauf pour les ACK)
-            if lora_msg.message_type != MessageType.ACK:
-                self.message_router.route_from_lora(lora_msg)
+    #         # Router le message vers MQTT (sauf pour les ACK)
+    #         if lora_msg.message_type != MessageType.ACK:
+    #             self.message_router.route_from_lora(lora_msg)
                 
-        except Exception as e:
-            self.stats["errors"] += 1
+    #     except Exception as e:
+    #         self.stats["errors"] += 1
     
     # def _send_ack(self, target_uid: str):
     #     """Envoie un ACK à un device ESP32"""
@@ -193,6 +240,13 @@ class GatewayCore:
         if error:
             import traceback
             traceback.print_exc()
+        
+        # Arrêter le thread LoRa
+        self.lora_running = False
+        if self.lora_thread:
+            self.lora_thread.join(timeout=5)
+            if self.lora_thread.is_alive():
+                print("⚠️  Thread LoRa n'a pas pu s'arrêter proprement")
         
         # Arrêter les composants
         if self.mqtt_comm:

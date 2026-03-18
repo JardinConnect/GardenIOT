@@ -218,32 +218,53 @@ class LoRaProtocol(CommunicationProtocol):
         
         return payload
     
-    def _build_message(self, message):
+    # def _build_message(self, message):
+    #     """
+    #     Construit la trame LoRa.
+    #     Format: B|TYPE|TIMESTAMP|UID|DATAS|E
+    #     """
+    #     msg_type = message.get('type', 'D')
+    #     datas = message.get('datas', '')
+    #     timestamp = self._get_timestamp()
+        
+    #     return f"B|{msg_type}|{timestamp}|{self._uid}|{datas}|E"
+
+    def _build_message(self, payload):
         """
-        Construit la trame LoRa.
+        Format payload for LoRa transmission.
+        Input: {"type": "D", "uid": "ESP32-001", "timestamp": 1234567890, "data": {"1TA": 25, "1HA": 45}}
         Format: B|TYPE|TIMESTAMP|UID|DATAS|E
         """
-        msg_type = message.get('type', 'D')
-        datas = message.get('datas', '')
-        timestamp = self._get_timestamp()
+        if not payload:
+            return None
+
+        # Extraire les données
+        msg_type = payload["type"]
+        uid = self._uid  # Utiliser l'UID du device manager
+        timestamp = payload["timestamp"]
+        data = payload["data"]
+
+        # Formater les données en chaîne LoRa
+        data_str = ";".join([f"{k}{v}" for k, v in data.items()])
+
+        # Construire le message LoRa
+        return f"B|{msg_type}|{timestamp}|{uid}|{data_str}|E"
+
+    # def _get_timestamp(self):
+    #     """Récupère le timestamp depuis le RTC ou fallback."""
+    #     if self._rtc:
+    #         try:
+    #             dt = self._rtc.datetime()
+    #             return "{:04d}-{:02d}-{:02d}T{:02d}:{:02d}:{:02d}Z".format(
+    #                 dt[0], dt[1], dt[2], dt[4], dt[5], dt[6]
+    #             )
+    #         except:
+    #             pass
         
-        return f"B|{msg_type}|{timestamp}|{self._uid}|{datas}|E"
-    
-    def _get_timestamp(self):
-        """Récupère le timestamp depuis le RTC ou fallback."""
-        if self._rtc:
-            try:
-                dt = self._rtc.datetime()
-                return "{:04d}-{:02d}-{:02d}T{:02d}:{:02d}:{:02d}Z".format(
-                    dt[0], dt[1], dt[2], dt[4], dt[5], dt[6]
-                )
-            except:
-                pass
-        
-        t = time.localtime()
-        return "{:04d}-{:02d}-{:02d}T{:02d}:{:02d}:{:02d}Z".format(
-            t[0], t[1], t[2], t[3], t[4], t[5]
-        )
+    #     t = time.localtime()
+    #     return "{:04d}-{:02d}-{:02d}T{:02d}:{:02d}:{:02d}Z".format(
+    #         t[0], t[1], t[2], t[3], t[4], t[5]
+    #     )
     
     def _wait_for_ack(self):
         """Attend un ACK pendant le timeout configuré."""
@@ -269,6 +290,7 @@ class LoRaProtocol(CommunicationProtocol):
                     return True
                 else:
                     log(f"Received non-ACK message: {received_message}")
+                    # Continuer à attendre l'ACK, ignorer les autres messages pour l'instant
             
             # Small delay to prevent busy waiting
             time.sleep(0.5)

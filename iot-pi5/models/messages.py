@@ -2,7 +2,7 @@
 Modèles de données pour les messages LoRa et MQTT
 """
 from dataclasses import dataclass
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from enum import Enum
 import json
 from datetime import datetime
@@ -161,17 +161,15 @@ class SensorData:
 @dataclass
 class AlertConfig:
     """Configuration d'alerte - correspond au modèle backend"""
-    alert_id: str  # UUID de l'alerte
-    title: str
-    is_active: bool = True
-    warning_enabled: bool = False
-    cell_ids: list = None  # Liste des UID des cellules concernées
-    sensors: list = None  # Liste des configurations de capteurs
+    def __init__(self, alert_id: str, is_active: bool, cell_ids: List[str], sensors: dict):
+        self.alert_id = alert_id
+        self.is_active = is_active
+        self.cell_ids = cell_ids
+        self.sensors = sensors
     
     def to_lora_data(self) -> str:
         """Convertit en format pour envoi LoRa"""
-        # Format: ID|TITLE|ACTIVE|WARNING|CELL1,CELL2|SENSOR1,SENSOR2
-        cells = ",".join(self.cell_ids) if self.cell_ids else ""
+        # Format: ID:ACTIVE:SENSOR1;SENSOR2
         
         # Convertir les sensors en format LoRa
         sensor_configs = []
@@ -182,35 +180,21 @@ class AlertConfig:
             warning = sensor.get("warningRange", [0, 100])
             
             # Format: TYPE:INDEX:CRIT_MIN:CRIT_MAX:WARN_MIN:WARN_MAX
-            config_str = f"{sensor_type}:{index}:{critical[0]}:{critical[1]}:{warning[0]}:{warning[1]}"
+            config_str = f"{index}{sensor_type},{critical[0]},{critical[1]},{warning[0]},{warning[1]}"
             sensor_configs.append(config_str)
         
-        sensors_str = "|".join(sensor_configs)
+        sensors_str = ";".join(sensor_configs)
         
-        return f"{self.alert_id}|{self.title}|{int(self.is_active)}|{int(self.warning_enabled)}|{cells}|{sensors_str}"
+        return f"{self.alert_id}:{int(self.is_active)}:{sensors_str}"
     
     @classmethod
     def from_mqtt_payload(cls, payload: Dict[str, Any]) -> 'AlertConfig':
         """Crée une config à partir d'un payload MQTT (format backend)"""
         return cls(
             alert_id=str(payload.get("id", "")),
-            title=payload.get("title", "Nouvelle alerte"),
             is_active=payload.get("is_active", True),
-            warning_enabled=payload.get("warning_enabled", False),
             cell_ids=payload.get("cell_ids", []),
-            sensors=payload.get("sensors", [])
-        )
-    
-    @classmethod
-    def from_backend_model(cls, alert: 'Alert') -> 'AlertConfig':
-        """Crée une config à partir du modèle SQLAlchemy Alert"""
-        return cls(
-            alert_id=str(alert.id),
-            title=alert.title,
-            is_active=alert.is_active,
-            warning_enabled=alert.warning_enabled,
-            cell_ids=alert.cell_ids,
-            sensors=alert.sensors
+            sensors=payload.get("sensors", {})
         )
 
 

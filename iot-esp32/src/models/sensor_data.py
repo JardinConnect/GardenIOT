@@ -32,7 +32,7 @@ class SensorData:
     def __init__(self, sensor_name, sensor_type):
         self.sensor_name = sensor_name
         self.sensor_type = sensor_type
-        self.timestamp = time.time()
+        self.timestamp = time.time() # TODO : use RTC timestamp if available
         self.readings = []
         self.is_valid = True
         self.error = None
@@ -64,31 +64,26 @@ class SensorData:
             'error': self.error
         }
     
-    def to_compact(self, codes=None):
+    def to_compact(self, codes=None, index=1):
         """
-        Convert to compact format (for LoRa communication).
-        Requires codes dictionary to be provided.
-
-        Args:
-            codes: dict mapping metric names to short codes
-                e.g., {'temperature': 'TA', 'humidity': 'HA'}
-
+        Convert to raw compact format (index + code + value).
         Returns:
-            dict: compact data format
-
-        Raises:
-            ValueError: if codes are not provided or incomplete
+            dict: {f"{index}{code}": value, ...}
+            Example: {"1TA": 25.3, "1HA": 45.0}
         """
         if not codes:
-            raise ValueError("Sensor codes must be provided for compact format")
+            raise ValueError("Sensor codes must be provided")
 
-        compact_data = {'s': self.sensor_name, 't': int(self.timestamp)}
+        compact_data = {}
 
         for reading in self.readings:
             metric_code = codes.get(reading.metric)
             if not metric_code:
-                raise ValueError(f"No code defined for metric: {reading.metric}")
-            compact_data[metric_code] = reading.value
+                continue
+            try:
+                compact_data[f"{index}{metric_code}"] = float(reading.value)
+            except (ValueError, TypeError):
+                continue
 
         return compact_data
     

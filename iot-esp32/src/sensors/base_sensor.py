@@ -72,6 +72,7 @@ class BaseSensor:
         return units.get(metric, '')
 
     def _should_read(self):
+        # TODO : use rtc timestamp if available
         return (time.time() - self._last_read_time) >= self._read_interval
 
     def is_healthy(self):

@@ -15,7 +15,7 @@ class ChildRepository:
     
     def __init__(self, config: dict):
         self.config = config
-        self.file_path = config.get("file_path", "child.json")
+        self.file_path = config.get("repository.file_path", "repositories/child.json")
         self.parent_id = None
     
     def initialize(self):
@@ -37,21 +37,10 @@ class ChildRepository:
         try:
             with open(self.file_path, 'r') as f:
                 data = json.load(f)
-                
-                # Migration si ancien format (liste)
-                if isinstance(data, list):
-                    data = {
-                        "parent_id": self.parent_id,
-                        "children": data
-                    }
-                    self._save_data(data)
-                
+                print(f"[DEBUG] Chargé: {data}")  # Log pour déboguer
                 return data
-        except (json.JSONDecodeError, FileNotFoundError):
-            return {
-                "parent_id": self.parent_id,
-                "children": []
-            }
+        except Exception as e:
+            print(f"[DEBUG] Erreur de chargement: {e}")
     
     def _save_data(self, data: Dict[str, Any]):
         """Sauvegarde les données dans le fichier"""
@@ -135,7 +124,8 @@ class ChildRepository:
     def is_child_authorized(self, child_uid: str) -> bool:
         """Vérifie si un enfant est autorisé"""
         data = self._load_data()
-        
+        print(f" Vérification config children {data}")
+        print(f" Vérification autorisation pour {child_uid} parmi {len(data['children'])} enfants")
         for child in data["children"]:
             child_id = child.get('id') if isinstance(child, dict) else child
             if child_id == child_uid:

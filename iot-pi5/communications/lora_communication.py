@@ -22,6 +22,8 @@ class LoRaCommunication:
         self._anti_doublon_sec = 3.0
         self._last_msg = ""
         self._last_msg_time = 0
+
+        self.message_callback = None  # Callback pour les messages entrants
         
         # Stats
         self.stats = {
@@ -72,6 +74,10 @@ class LoRaCommunication:
             print(f"Erreur init LoRa: {e}")
             self.rfm9x = None
 
+    def set_message_callback(self, callback):
+        """Définit un callback pour les messages LoRa entrants."""
+        self.message_callback = callback
+
     
     def set_timeout(self, timeout: float):
         self._timeout = timeout
@@ -87,8 +93,15 @@ class LoRaCommunication:
                 print("DEBUG: Forced listen mode")
             except Exception as e:
                 print(f"Erreur forçage mode écoute: {e}")
+
+    def receive(self):
+        """Reçoit un message et appelle le callback."""
+        message = self._receive_raw()
+        if message and self.message_callback:
+            self.message_callback(message)
+        return message
     
-    def receive(self) -> Optional[str]:
+    def _receive_raw(self) -> Optional[str]:
         """
         Écoute et reçoit un message LoRa.
         

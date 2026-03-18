@@ -66,6 +66,13 @@ class DeviceManager:
         # 6. State Manager (State Pattern)
         self.state_manager = StateManager(self)
         
+        # 7. Cycle management
+        self.cycle_active = False
+        self.ack_received = False
+        
+        # Subscribe to ACK events
+        self.event_bus.subscribe('ack.received', self._on_ack_received)
+        
         gc.collect()
         print(f"[DeviceManager] All components initialized")
 
@@ -134,8 +141,8 @@ class DeviceManager:
 
     def run_cycle(self):
         """
-        Run one complete cycle: read sensors -> send data -> listen for ACK.
-        Simplified version based on working test.
+        Run one complete cycle: read sensors -> send data -> listen for ACK/messages.
+        Listens continuously for 10s or until ACK is received (whichever comes first).
         """
         print("\n" + "="*50)
         print("[DeviceManager.run_cycle] NEW ENTRY - Starting ACTIVE cycle")
@@ -145,105 +152,99 @@ class DeviceManager:
         sensor_data = self.sensors.read_all_sensors()
         print(f"[DeviceManager.run_cycle] Sensor data: {sensor_data}")
 
-        # 2. Format data
-        payload = self._format_sensor_data(sensor_data)
+        # 2. Create payload
+        payload = self.create_payload(sensor_data, message_type="D")
         if not payload or payload == "NO_DATA":
             print("[DeviceManager.run_cycle] No valid data to send")
             return
 
-        # 3. Prepare message
-        message = {'type': 'D', 'datas': payload}
-        print(f"[DeviceManager.run_cycle] Sending message ack test: {message}")
-
-        # SEND WITH ACK
-        send_success = self.communication.send(message, expect_ack=True)
+        # 3. Send data (simple send, no complex ACK logic in protocol)
+        print("[DeviceManager.run_cycle] Sending data...")
+        send_success = self.communication.send(payload, expect_ack=False)
         if not send_success:
             print("[DeviceManager.run_cycle] Failed to send message")
             return
 
-        # 5. Listen for other messages
-        print("[DeviceManager.run_cycle] Listening for messages...")
-        self._listen_for_messages()
+        # 4. Listen continuously for ACK or other messages (10s timeout)
+        print("[DeviceManager.run_cycle] Waiting for ACK and listening for messages...")
+        self._listen_continuously(duration_ms=10000)
+        
+        if self.ack_received:
+            print("[DeviceManager.run_cycle] ACK received - cycle completed successfully")
+        else:
+            print("[DeviceManager.run_cycle] No ACK received within timeout")
 
         print("[DeviceManager.run_cycle] EXIT - Cycle completed")
 
-    def _format_sensor_data(self, sensor_data):
+    def create_payload(self, sensor_data, message_type="D"):
         """
-        Format sensor data to compact string.
-        Format: 1TA32;1TS25;1HA45;1HS40;1L200;1B97
-        
-        Structure per value: {index}{code}{value}
-        - index: 1
-        - code: TA, TS, HA, HS, L, etc.
-        - value: integer (rounded)
+        Create a generic payload with all required data.
+        Args:
+            sensor_data: Raw sensor data from SensorManager
+            message_type: Type of message (e.g., "D" for data)
+        Returns:
+            dict: {
+                "type": "D",
+                "uid": "device_uid",
+                "timestamp": 1234567890,
+                "data": {"1TA": 25, "1HA": 45, ...}
+            }
         """
-        print("[DeviceManager._format_sensor_data] ENTRY")
-        formatted_parts = []
+        if not sensor_data:
+            return None
 
-        for sensor_name, readings in sensor_data.items():
+        # Get timestamp from RTC (fallback to time if unavailable)
+        timestamp = self._get_timestamp()  # Méthode à ajouter
+
+        # Fusionner les données de tous les capteurs
+        merged_data = {}
+        for sensor_data in sensor_data.values():
+            merged_data.update(sensor_data)
+
+        # Arrondir les valeurs et convertir en int
+        formatted_data = {}
+        for key, value in merged_data.items():
             try:
-                sensor_codes = self.config.get_sensor_codes(sensor_name)
-                
-                if not sensor_codes:
-                    print(f"[DeviceManager._format_sensor_data] No codes for sensor '{sensor_name}', skipping")
-                    continue
+                formatted_data[key] = int(round(float(value)))
+            except (ValueError, TypeError):
+                continue
 
-                # Extract data from readings
-                if isinstance(readings, dict):
-                    data = readings.get('data', readings)
-                    # Handle nested format from SensorData.to_dict()
-                    if 'readings' in data:
-                        # Format: {'readings': [{'metric': 'temperature', 'value': 25.3}]}
-                        values = {}
-                        for r in data['readings']:
-                            values[r['metric']] = r['value']
-                        data = values
-                    elif 'readings' in readings:  # Alternative format
-                        values = {}
-                        for r in readings['readings']:
-                            values[r['metric']] = r['value']
-                        data = values
-                else:
-                    continue
-
-                for metric, value in data.items():
-                    if metric in sensor_codes:
-                        code = sensor_codes[metric]
-                        # Round to integer, prefix with priority "1"
-                        try:
-                            int_value = int(round(float(value)))
-                            formatted_parts.append(f"1{code}{int_value}")
-                            print(f"[DeviceManager._format_sensor_data] Formatted {sensor_name}.{metric}: {code}{int_value}")
-                        except (ValueError, TypeError) as e:
-                            print(f"[DeviceManager._format_sensor_data] Invalid value for {sensor_name}.{metric}: {value} ({e})")
-
-            except Exception as e:
-                print(f"[DeviceManager._format_sensor_data] Format error for '{sensor_name}': {e}")
-
-        if not formatted_parts:
-            print("[DeviceManager._format_sensor_data] No valid sensor data to format")
-            return "NO_DATA"
-        
-        result = ";".join(formatted_parts)
-        print(f"[DeviceManager._format_sensor_data] EXIT - Formatted payload: {result}")
-        return result
+        return {
+            "type": message_type,
+            "timestamp": timestamp,
+            "data": formatted_data
+        }
 
     
-    def _listen_for_messages(self):
-        print("[DeviceManager._listen_for_messages] ENTRY")
-        try:
-            timeout = self.config.get('device.listen_timeout', 5000)
-            print(f"[DeviceManager._listen_for_messages] Waiting for messages (timeout: {timeout}ms)")
-            message = self.communication.receive(timeout_ms=timeout)
-            
-            if message:
-                print(f"[DeviceManager._listen_for_messages] Message received: {message}")
-                self._handle_incoming_message(message)
-            else:
-                print("[DeviceManager._listen_for_messages] No message received")
-        except Exception as e:
-            print(f"[DeviceManager._listen_for_messages] Error: {e}")
-        print("[DeviceManager._listen_for_messages] EXIT")
+    def _listen_continuously(self, duration_ms=10000):
+        """
+        Écoute les messages en continu pendant une durée donnée ou jusqu'à réception d'ACK
+        """
+        print(f"[DeviceManager._listen_continuously] Starting continuous listen for {duration_ms}ms")
+        self.cycle_active = True
+        self.ack_received = False
+        
+        start_time = time.ticks_ms()
+        
+        while self.cycle_active and (time.ticks_diff(time.ticks_ms(), start_time) < duration_ms):
+            try:
+                # Écouter les messages avec un timeout court pour permettre une vérification fréquente
+                message = self.communication.receive(timeout_ms=500)
+                
+                if message:
+                    print(f"[DeviceManager._listen_continuously] Message received: {message}")
+                    self._handle_incoming_message(message)
+                
+                # Vérifier si on a reçu un ACK pour sortir de la boucle
+                if self.ack_received:
+                    print("[DeviceManager._listen_continuously] ACK received, stopping listen")
+                    break
+                    
+            except Exception as e:
+                print(f"[DeviceManager._listen_continuously] Error: {e}")
+                time.sleep(0.1)
+        
+        print("[DeviceManager._listen_continuously] Listen completed")
     
     def _handle_incoming_message(self, message):
         print("[DeviceManager._handle_incoming_message] ENTRY")
@@ -253,27 +254,28 @@ class DeviceManager:
             return
         
         msg_type = message.get('type')
-        from_uid = message.get('uid')
+        device_uid = message.get('uid')
         data = message.get('datas', '')
         
-        print(f"[DeviceManager._handle_incoming_message] Message from {from_uid}: {msg_type} - {data}")
+        print(f"[DeviceManager._handle_incoming_message] Message for {device_uid}: {msg_type} - {data}")
         
         # Vérification 1: Le message est-il pour nous? (pour les ACK)
         if msg_type in ['ACK', 'PA']:
             # Format attendu pour ACK: B|ACK|timestamp|gateway_uid|device_uid|E
             # Donc le champ 'uid' devrait être notre UID
-            if from_uid != self.uid:
-                print(f"[DeviceManager._handle_incoming_message] ACK not for us (expected {self.uid}, got {from_uid})")
+            if device_uid != self.uid:
+                print(f"[DeviceManager._handle_incoming_message] ACK not for us (expected {self.uid}, got {device_uid})")
                 return
             
             print("[DeviceManager._handle_incoming_message] ACK received - data sent successfully")
-            # Pas besoin de publier sur EventBus pour les ACK
+            # Publier l'événement ACK pour notifier que le cycle peut se terminer
+            self.event_bus.publish('ack.received', message)
             print("[DeviceManager._handle_incoming_message] EXIT")
             return
         
         # Vérification 2: Le message vient-il d'une source autorisée?
-        if not self._is_trusted_sender(from_uid):
-            print(f"[DeviceManager._handle_incoming_message] Untrusted sender: {from_uid}")
+        if not self._check_uid_device(device_uid):
+            print(f"[DeviceManager._handle_incoming_message] Untrusted sender: {device_uid}")
             return
         
         # Publier sur EventBus (Observer pattern)
@@ -302,34 +304,51 @@ class DeviceManager:
         
         print("[DeviceManager._handle_incoming_message] EXIT")
     
-    def _is_trusted_sender(self, sender_uid):
+    def _check_uid_device(self, uid):
         """
-        Vérifie si l'expéditeur est autorisé à nous envoyer des messages.
+        Vérifie si le destinataire est valide.
         
         Args:
-            sender_uid: UID de l'expéditeur
+            uid: UID du destinataire
             
         Returns:
-            True si l'expéditeur est autorisé, False sinon
+            True si le destinataire est valide, False sinon
         """
-        print(f"[DeviceManager._is_trusted_sender] Checking sender: {sender_uid}")
+        print(f"[DeviceManager._check_uid_device] Checking recipient: {uid}")
         
         # Le gateway parent est toujours autorisé
-        parent_id = self.config.get('device.parent_id')
-        if parent_id and sender_uid == parent_id:
-            print(f"[DeviceManager._is_trusted_sender] Sender is parent gateway: {sender_uid}")
-            return True
-        
-        # Le gateway par défaut (GATEWAY_PI) est aussi autorisé
-        if sender_uid == "GATEWAY_PI":
-            print(f"[DeviceManager._is_trusted_sender] Sender is default gateway: {sender_uid}")
+        device_uid = self.config.get('device.uid')
+        if device_uid and uid == device_uid:
+            print(f"[DeviceManager._check_uid_device] Recipient is parent gateway: {uid}")
             return True
         
         # Autres règles de confiance peuvent être ajoutées ici
         # Par exemple: liste blanche d'UIDs, etc.
         
-        print(f"[DeviceManager._is_trusted_sender] Sender not trusted: {sender_uid}")
+        print(f"[DeviceManager._check_uid_device] Recipient not valid: {uid}")
         return False
+
+    def _get_timestamp(self):
+        """
+        Get current timestamp from RTC (fallback to time.localtime if RTC unavailable).
+        Returns:
+            str: ISO 8601 timestamp (e.g., "2023-11-15T14:30:00Z")
+        """
+        if self._rtc:
+            try:
+                # Lire le RTC (format: (year, month, day, weekday, hour, minute, second, microsecond))
+                dt = self._rtc.datetime()
+                return "{:04d}-{:02d}-{:02d}T{:02d}:{:02d}:{:02d}Z".format(
+                    dt[0], dt[1], dt[2], dt[4], dt[5], dt[6]
+                )
+            except Exception as e:
+                print(f"[DeviceManager] RTC error: {e}")
+
+        # Fallback: utiliser time.localtime (moins précis)
+        t = time.localtime()
+        return "{:04d}-{:02d}-{:02d}T{:02d}:{:02d}:{:02d}Z".format(
+            t[0], t[1], t[2], t[3], t[4], t[5]
+        )
     
     def _handle_unpair_request(self):
         print("[DeviceManager] Unpair request received")
@@ -385,6 +404,12 @@ class DeviceManager:
         if self.communication:
             self.communication.disconnect()
         print("[DeviceManager] Device stopped")
+    
+    def _on_ack_received(self, message):
+        """Callback appelé quand un ACK est reçu"""
+        print("[DeviceManager._on_ack_received] ACK received!")
+        self.ack_received = True
+        self.cycle_active = False
     
     def _needs_i2c(self):
         sensors_config = self.config.get('sensors', [])

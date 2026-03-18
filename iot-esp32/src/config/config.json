@@ -3,7 +3,7 @@
     "uid": "644a5b1e-9a57-4fe4-b493-8950eea04e51",
     "parent_id": "GATEWAY_PI",
     "send_interval": 60,
-    "listen_timeout": 5000
+    "listen_timeout": 9000
   },
 
   "lora": {
@@ -43,6 +43,7 @@
       "enabled": true,
       "pin": 26,
       "codes": { "temperature": "TA", "humidity": "HA" },
+      "index": 1,
       "retry": 3,
       "delay_ms": 2000,
       "alerts": {
@@ -56,6 +57,7 @@
       "enabled": true,
       "pin": 22,
       "codes": { "temperature": "TS" },
+      "index": 1,
       "alerts": {
         "temperature": { "min": -10, "max": 50 }
       }
@@ -66,6 +68,7 @@
       "enabled": true,
       "bus": "i2c",
       "codes": { "luminosity": "L" },
+      "index": 1,
       "alerts": {
         "luminosity": { "min": 2, "max": null }
       }
@@ -76,6 +79,7 @@
       "enabled": true,
       "pin": 35,
       "codes": { "soil_moisture": "HS" },
+      "index": 1,
       "params": {
         "dry_value": 3500,
         "wet_value": 900
@@ -89,7 +93,7 @@
       "name": "sol_humidity",
       "enabled": true,
       "pin": 36,
-      "index": 1,
+      "index": 2,
       "codes": { "soil_moisture": "HS" },
       "params": {
         "dry_value": 3500,
