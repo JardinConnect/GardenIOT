@@ -81,6 +81,18 @@ class HardwareManager:
         print(f"[HardwareManager] LoRa module ready (freq={lora_config.get('frequency')}MHz, SF={lora_config.get('spreading_factor')})")
         return self.lora
 
+    def init_btn(self):
+        btn_config = self.config.get('button', {})
+        btn_pin = btn_config.get('pin', 4)
+        led_pin = btn_config.get('pin_led', 32)
+        
+        self.btn = Pin(btn_pin, Pin.IN, Pin.PULL_UP)
+        self.btn_led = Pin(led_pin, Pin.OUT)
+        self.btn_led.value(0)
+        
+        print(f"[HardwareManager] Button ready (pin={btn_pin}, led={led_pin})")
+        return self.btn
+
     def init_rtc(self):
         if not self.i2c:
             self.init_i2c()

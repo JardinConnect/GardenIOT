@@ -22,6 +22,7 @@ class LoRaCommunication:
         self._anti_doublon_sec = 3.0
         self._last_msg = ""
         self._last_msg_time = 0
+        self._gateway_uid = config.get("gateway_uid", "GATEWAY_PI")
 
         self.message_callback = None  # Callback pour les messages entrants
         
@@ -124,6 +125,11 @@ class LoRaCommunication:
             
             # Convertir en string
             msg_str = str(packet, 'utf-8', 'ignore').strip()
+
+            # Strip XXXX hardware padding added by ESP32
+            if msg_str.startswith("XXXX"):
+                msg_str = msg_str[4:]
+
             print(f"[LoRaCommunication.receive] Raw message: {msg_str}")
             
             # Vérification anti-doublon
@@ -158,82 +164,58 @@ class LoRaCommunication:
             print("[LoRaCommunication.receive] EXIT - Error")
             return None
     
-    def send(self, message: str, retries: int = 3) -> bool:
+    def send(self, message: str, retries: int = 2) -> bool:
         """
-        Envoie un message LoRa.
+        Envoie un message LoRa. Réessaie uniquement en cas d'échec.
         
         Args:
             message: message au format B|...|E
-            retries: nombre de tentatives
+            retries: nombre de tentatives en cas d'échec
         """
         if not self.rfm9x:
             print(f"LoRa non initialisé, message ignoré: {message}")
             return False
         
-        try:
-            payload = message.encode('utf-8')
-            
-            for i in range(retries):
+        payload = message.encode('utf-8')
+        for attempt in range(retries):
+            try:
                 self.rfm9x.send(payload)
-                time.sleep(0.15)
-            
-            self.stats["sent"] += 1
-            print(f"LoRa envoyé: {message}")
-            
-            # Remettre en écoute
-            self.rfm9x.idle()
-            time.sleep(0.01)
-            self.rfm9x.listen()
-            
-            return True
-            
-        except Exception as e:
-            print(f"Erreur envoi LoRa: {e}")
-            self.stats["errors"] += 1
-            return False
+                self.stats["sent"] += 1
+                print(f"LoRa envoyé: {message}")
+                self.rfm9x.idle()
+                time.sleep(0.01)
+                self.rfm9x.listen()
+                return True
+            except Exception as e:
+                print(f"Erreur envoi LoRa (tentative {attempt + 1}/{retries}): {e}")
+                if attempt < retries - 1:
+                    time.sleep(0.3)
+        
+        self.stats["errors"] += 1
+        return False
     
-    def send_ack(self, target_uid: str, gateway_uid: str = "GATEWAY_PI") -> bool:
+    def send_ack(self, target_uid: str, status: str = "OK", state: str = "S") -> bool:
         """
-        Envoie un ACK à un device ESP32.
-        
-        Format: B|ACK|TIMESTAMP|GATEWAY_UID|TARGET_UID|E
-        
+        Envoie un ACK à un device.
+
+        Format: B|ACK|TIMESTAMP|TARGET_UID|{status};{state}|E
+          status: 'OK' (tout reçu) ou 'KO' (erreur/mismatch)
+          state:  'S' (device peut dormir) ou 'L' (gateway a des messages à envoyer)
+
         Args:
-            target_uid: UID du device cible (ESP32)
-            gateway_uid: UID du gateway (par défaut: GATEWAY_PI)
-            
-        Returns:
-            True si l'ACK a été envoyé avec succès, False sinon
+            target_uid: UID du device cible (ESP32) — utilisé pour le log
+            status: 'OK' ou 'KO'
+            state:  'S' ou 'L'
         """
-        print(f"[LoRaCommunication.send_ack] ENTRY - Sending ACK to {target_uid}")
-        
         if not self.rfm9x:
             print("[LoRaCommunication.send_ack] ERROR - LoRa not initialized")
             return False
-        
-        try:
-            from datetime import datetime
-            timestamp = datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
-            ack_message = f"B|ACK|{timestamp}|{target_uid}|E"
-            
-            print(f"[LoRaCommunication.send_ack] ACK message: {ack_message}")
-            
-            # Envoyer avec 3 tentatives
-            result = self.send(ack_message, retries=3)
-            
-            if result:
-                print(f"[LoRaCommunication.send_ack] SUCCESS - ACK sent to {target_uid}")
-                self.stats["sent"] += 1
-            else:
-                print(f"[LoRaCommunication.send_ack] FAILED - Could not send ACK to {target_uid}")
-            
-            print("[LoRaCommunication.send_ack] EXIT")
-            return result
-            
-        except Exception as e:
-            print(f"[LoRaCommunication.send_ack] ERROR: {e}")
-            self.stats["errors"] += 1
-            return False
+
+        from datetime import datetime
+        timestamp = datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
+        ack_message = f"B|ACK|{timestamp}|{target_uid}|{status};{state}|E"
+        print(f"[LoRaCommunication.send_ack] → {ack_message}")
+        return self.send(ack_message)
     
     def shutdown(self):
         if self.rfm9x:

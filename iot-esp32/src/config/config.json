@@ -1,9 +1,8 @@
 {
   "device": {
-    "uid": "644a5b1e-9a57-4fe4-b493-8950eea04e51",
+    "uid": "",
     "parent_id": "GATEWAY_PI",
-    "send_interval": 60,
-    "listen_timeout": 9000
+    "send_interval": 60
   },
 
   "lora": {
@@ -13,12 +12,10 @@
     "coding_rate": 5,
     "tx_power": 14,
     "preamble_length": 8,
-    "crc": false,
+    "crc": true,
     "spi_baudrate": 5000000,
-    "ack_enabled": true,
-    "ack_timeout_ms": 5000,
-    "max_retries": 5,
-    "listen_timeout_ms": 5000,
+    "max_retries": 2,
+    "listen_timeout_ms": 2000,
     "pins": {
       "sck": 18,
       "miso": 19,
@@ -46,21 +43,16 @@
       "index": 1,
       "retry": 3,
       "delay_ms": 2000,
-      "alerts": {
-        "temperature": { "min": 0, "max": 45 },
-        "humidity": { "min": 20, "max": 90 }
-      }
+      "alerts": {}
     },
     {
       "type": "ds18b20",
       "name": "sol_temp",
       "enabled": true,
-      "pin": 22,
+      "pin": 14,
       "codes": { "temperature": "TS" },
       "index": 1,
-      "alerts": {
-        "temperature": { "min": -10, "max": 50 }
-      }
+      "alerts": {}
     },
     {
       "type": "bh1750",
@@ -69,9 +61,7 @@
       "bus": "i2c",
       "codes": { "luminosity": "L" },
       "index": 1,
-      "alerts": {
-        "luminosity": { "min": 2, "max": null }
-      }
+      "alerts": {}
     },
     {
       "type": "lm393",
@@ -84,9 +74,7 @@
         "dry_value": 3500,
         "wet_value": 900
       },
-      "alerts": {
-        "soil_moisture": { "min": 1, "max": null }
-      }
+      "alerts": {}
     },
     {
       "type": "lm393",
@@ -99,19 +87,30 @@
         "dry_value": 3500,
         "wet_value": 900
       },
-      "alerts": {
-        "soil_moisture": { "min": 1, "max": null }
-      }
+      "alerts": {}
     }
   ],
 
+  "communication": {
+    "ack_wait_ms": 2000,
+    "gateway_receive_timeout_ms": 10000
+  },
+
   "pairing": {
-    "timeout_ms": 5000,
-    "button_pin": 13
+    "timeout_ms": 3000
+  },
+
+  "button": {
+    "pin": 4,
+    "pin_led": 32
   },
 
   "power": {
     "sleep_interval": 15,
     "reset_duration_ms": 10000
+  },
+
+  "alert": {
+    "alert_timeout": 86400
   }
 }

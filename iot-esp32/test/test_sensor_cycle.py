@@ -134,7 +134,7 @@ def test_sensor_cycle():
     message = {
         'type': 'D',
         'uid': config.get('device.uid'),
-        'datas': payload
+        'data': payload
     }
     
     print(f"Message: {message}")

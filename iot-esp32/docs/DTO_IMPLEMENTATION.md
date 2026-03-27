@@ -2,15 +2,17 @@
 
 ## Résumé
 
-Le **Data Transfer Object (DTO) Pattern** a été implémenté avec succès dans le projet IoT ESP32. Cette implémentation standardise le format des données des capteurs à travers tout le système.
+Le **Data Transfer Object (DTO) Pattern** a été implémenté avec succès dans le projet IoT device. Cette implémentation standardise le format des données des capteurs à travers tout le système.
 
 ## Fichiers créés/modifiés
 
 ### Nouveaux fichiers
+
 - `src/models/sensor_data.py` - Classes `SensorReading` et `SensorData`
 - `test_dto_simple.py` - Tests unitaires pour le DTO
 
 ### Fichiers modifiés
+
 - `src/sensors/base_sensor.py` - Utilise maintenant le DTO
 - `src/core/sensor_manager.py` - Adapté pour le DTO
 - `src/managers/alert_manager.py` - Adapté pour le DTO
@@ -19,6 +21,7 @@ Le **Data Transfer Object (DTO) Pattern** a été implémenté avec succès dans
 ## Classes implémentées
 
 ### 1. `SensorReading`
+
 ```python
 class SensorReading:
     def __init__(self, metric, value, unit=""):
@@ -30,6 +33,7 @@ class SensorReading:
 Représente une lecture individuelle avec son unité.
 
 ### 2. `SensorData` (DTO principal)
+
 ```python
 class SensorData:
     def __init__(self, sensor_name, sensor_type):
@@ -44,16 +48,18 @@ class SensorData:
 ## Fonctionnalités clés
 
 ### 1. **Standardisation des données**
+
 - Tous les capteurs retournent maintenant un objet `SensorData` au lieu de dictionnaires simples
 - Format cohérent à travers tout le système
 
 ### 2. **Deux formats de sérialisation**
 
 #### Format complet (pour WiFi/HTTP)
+
 ```python
 dto.to_dict() → {
     'sensor': 'air',
-    'type': 'DHT22', 
+    'type': 'DHT22',
     'timestamp': 1772121362.678745,
     'valid': True,
     'readings': [
@@ -65,6 +71,7 @@ dto.to_dict() → {
 ```
 
 #### Format compact (pour LoRa)
+
 ```python
 dto.to_compact() → {
     's': 'air',        # sensor name
@@ -75,11 +82,13 @@ dto.to_compact() → {
 ```
 
 ### 3. **Gestion des erreurs**
+
 - Champ `is_valid` pour indiquer si les données sont valides
 - Champ `error` pour stocker les messages d'erreur
 - Méthode `set_error()` pour marquer les données comme invalides
 
 ### 4. **Accès simplifié**
+
 ```python
 # Accéder à une valeur spécifique
 temperature = dto.get_reading('temperature')
@@ -96,7 +105,7 @@ Tous les capteurs héritent de `BaseSensor` qui utilise maintenant le DTO :
 class DHT22Sensor(BaseSensor):
     def _read_raw(self):
         return {'temperature': 22.5, 'humidity': 65.0}
-    
+
     def _validate(self, data):
         # validation logic
         return True
@@ -138,6 +147,7 @@ formatted = "T:22.5,H:65.0"  # Utilisé dans DeviceManager._format_sensor_data()
 ## Tests
 
 Les tests unitaires (`test_dto_simple.py`) vérifient :
+
 - Création et manipulation de `SensorReading`
 - Création et manipulation de `SensorData`
 - Sérialisation et désérialisation

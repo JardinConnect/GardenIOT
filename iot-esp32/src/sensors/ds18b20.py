@@ -5,7 +5,7 @@ import ds18x20
 import time
 
 class DS18B20Sensor(BaseSensor):
-    def __init__(self, name="ds18b20", pin=4, **kwargs):
+    def __init__(self, name="ds18b20", pin=14, **kwargs):
         super().__init__(name=name, pin=pin, **kwargs)
         """
         Initialise le capteur DS18B20 sur la broche spécifiée
@@ -19,10 +19,11 @@ class DS18B20Sensor(BaseSensor):
         self.ds = ds18x20.DS18X20(self.ow)
         # Recherche des capteurs DS18B20 connectés
         self.roms = self.ds.scan()
-        
-        if not self.roms:
-            print("No DS18B20 sensors found on pin {}".format(pin))
-    
+        self.init_hardware()
+
+    def _check_hardware(self):
+        return len(self.roms) > 0
+
     def _read_raw(self):
         if not self.roms:
             print("No DS18B20 sensors found, cannot read temperature.")
@@ -34,7 +35,7 @@ class DS18B20Sensor(BaseSensor):
             time.sleep_ms(750)
             
             # Lecture de chaque capteur
-            return {'temperature': self.ds.read_temp(0)}  # Lit le premier capteur trouvé (index 0)
+            return {'TS': self.ds.read_temp(self.roms[0])}  # Lit le premier capteur trouvé
         except Exception as e:
             print(f"  [{self.name}] DS18B20 read failed: {e}")
             return None
@@ -43,7 +44,7 @@ class DS18B20Sensor(BaseSensor):
         if data is None:
             return False
             
-        temp = data.get('temperature')
+        temp = data.get('TS')
         return temp is not None and -55 <= temp <= 125  # Plage valide pour DS18B20
     
     def _read_raws(self):
@@ -52,4 +53,4 @@ class DS18B20Sensor(BaseSensor):
             return None        
         self.ds.convert_temp()
         time.sleep_ms(750)
-        return {'temperature' + str(rom): self.ds.read_temp(rom) for rom in self.roms}  # Lit tous les capteurs et retourne un dict {rom: temp}
+        return {'TS': self.ds.read_temp(rom) for rom in self.roms}  # Lit tous les capteurs et retourne un dict {rom: temp}

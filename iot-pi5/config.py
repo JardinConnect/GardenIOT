@@ -12,7 +12,7 @@ DEFAULT_CONFIG = {
         "coding_rate": 5,
         "sync_word": 0x12,
         "preamble_length": 8,
-        "crc": False,
+        "crc": True,
         "listen_timeout": 5.0,
         "cs_pin": board.D5,
         "reset_pin": board.D25

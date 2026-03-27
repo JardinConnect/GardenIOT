@@ -37,10 +37,9 @@ class ChildRepository:
         try:
             with open(self.file_path, 'r') as f:
                 data = json.load(f)
-                print(f"[DEBUG] Chargé: {data}")  # Log pour déboguer
                 return data
         except Exception as e:
-            print(f"[DEBUG] Erreur de chargement: {e}")
+            print(f"[ChildRepo] Erreur de chargement: {e}")
     
     def _save_data(self, data: Dict[str, Any]):
         """Sauvegarde les données dans le fichier"""
@@ -91,7 +90,7 @@ class ChildRepository:
         data["children"].append(new_child)
         
         self._save_data(data)
-        print(f" {child_uid} ajouté")
+        print(f" {child_uid} added")
         return True
     
     def remove_child(self, child_uid: str) -> bool:
@@ -104,10 +103,10 @@ class ChildRepository:
             if child_id == child_uid:
                 data["children"].pop(i)
                 self._save_data(data)
-                print(f"🗑️ {child_uid} supprimé")
+                print(f"🗑️ {child_uid} removed")
                 return True
         
-        print(f" {child_uid} introuvable")
+        print(f" {child_uid} not find")
         return False
     
     def remove_all_children(self) -> int:
@@ -118,14 +117,12 @@ class ChildRepository:
         data["children"] = []
         self._save_data(data)
         
-        print(f"🧹 {count} enfants supprimés")
+        print(f"🧹 {count} child removed")
         return count
     
     def is_child_authorized(self, child_uid: str) -> bool:
         """Vérifie si un enfant est autorisé"""
         data = self._load_data()
-        print(f" Vérification config children {data}")
-        print(f" Vérification autorisation pour {child_uid} parmi {len(data['children'])} enfants")
         for child in data["children"]:
             child_id = child.get('id') if isinstance(child, dict) else child
             if child_id == child_uid:

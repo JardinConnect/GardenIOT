@@ -2,20 +2,57 @@
 Modèles de données pour les messages LoRa et MQTT
 """
 from dataclasses import dataclass
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Tuple
 from enum import Enum
 import json
 from datetime import datetime
 
 
+def extract_sensor_index_and_code(identifier: str) -> Tuple[int, str]:
+    """
+    Extrait l'index et le code d'un identifiant de capteur.
+    
+    Args:
+        identifier: Format "1TA", "2HA", etc.
+        
+    Returns:
+        Tuple[int, str]: (index, code) ex: (1, "TA")
+        
+    Examples:
+        >>> extract_sensor_index_and_code("1TA")
+        (1, "TA")
+        >>> extract_sensor_index_and_code("2HS")
+        (2, "HS")
+    """
+    if not identifier or len(identifier) < 2:
+        return 0, "UNKNOWN"
+    
+    # Extraire les chiffres du début
+    index_str = ''
+    code_str = ''
+    
+    for i, char in enumerate(identifier):
+        if char.isdigit():
+            index_str += char
+        else:
+            code_str = identifier[i:]
+            break
+    
+    if index_str and code_str:
+        return int(index_str), code_str
+    return 0, "UNKNOWN"
+
+
 class MessageType(Enum):
     """Types de messages supportés"""
     DATA = "D"           # Données capteurs
-    PAIRING = "P"        # Demande de pairing
+    STATUS = "S"         # Message de status (fin de cycle, avec compte)
+    PAIRING = "PA"        # Demande de pairing
     UNPAIR = "U"         # Demande de désappariement
     ALERT_CONFIG = "A"   # Configuration d'alerte
     ALERT_TRIGGER = "T"  # Alerte déclenchée
     ACK = "ACK"           # Accusé de réception
+    PA_ACK = "PA_ACK"     # Accusé de réception du pairing
     COMMAND = "C"        # Commande générale
 
 
@@ -180,7 +217,7 @@ class AlertConfig:
             warning = sensor.get("warningRange", [0, 100])
             
             # Format: TYPE:INDEX:CRIT_MIN:CRIT_MAX:WARN_MIN:WARN_MAX
-            config_str = f"{index}{sensor_type},{critical[0]},{critical[1]},{warning[0]},{warning[1]}"
+            config_str = f"{index}{sensor_type}:{critical[0]}:{critical[1]}:{warning[0]}:{warning[1]}"
             sensor_configs.append(config_str)
         
         sensors_str = ";".join(sensor_configs)
@@ -206,29 +243,35 @@ class AlertTrigger:
     sensor_type: str  # Type de capteur (TA, HA, etc.)
     sensor_index: int = 0  # Index du capteur
     value: float = 0.0  # Valeur mesurée
-    trigger_type: str = "critical"  # "critical" ou "warning"
+    trigger_type: str = "C"  # "critical" ou "warning"
     timestamp: str = ""  # Timestamp du déclenchement
     
-    def to_lora_data(self) -> str:
-        """Convertit en format LoRa: ALERT_ID|CELL_UID|SENSOR|INDEX|VALUE|TYPE|TIMESTAMP"""
-        return f"{self.alert_id}|{self.cell_uid}|{self.sensor_type}|{self.sensor_index}|{self.value}|{self.trigger_type}|{self.timestamp}"
-    
     @classmethod
-    def from_lora_data(cls, data_str: str) -> 'AlertTrigger':
-        """Parse les données d'alerte depuis le format LoRa"""
-        parts = data_str.split("|")
-        if len(parts) >= 7:
+    def from_lora_data(cls, data_str: str, uid: str = None, timestamp: str = None) -> 'AlertTrigger':
+        """Parse les données d'alerte depuis le format LoRa
+        
+        Format standardisé avec ; :
+        - ESP32: alert-123;W;1HA;54.3
+        """
+        parts = data_str.split(';')
+        
+        # Format ESP32 : alert-123;W;1HA;54.3
+        if len(parts) == 4 and uid and timestamp:
+            alert_id, level, identifier, value = parts[:4]
+            sensor_index, sensor_type = extract_sensor_index_and_code(identifier)
+            
             return cls(
-                alert_id=parts[0],
-                cell_uid=parts[1],
-                sensor_type=parts[2],
-                sensor_index=int(parts[3]),
-                value=float(parts[4]),
-                trigger_type=parts[5],
-                timestamp=parts[6]
+                alert_id=alert_id,
+                cell_uid=uid,
+                sensor_type=sensor_type,
+                sensor_index=sensor_index,
+                value=float(value),
+                trigger_type=level,
+                timestamp=timestamp
             )
-        return cls()
-    
+        else:
+            raise ValueError("Error parsing alert trigger")
+            
     def to_dict(self) -> Dict[str, Any]:
         """Convertit en dictionnaire pour MQTT"""
         return {

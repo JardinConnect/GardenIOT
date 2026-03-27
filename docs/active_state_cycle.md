@@ -1,10 +1,11 @@
 # Cycle de vie de l'état ACTIVE
 
-Ce document explique en détail le cycle de vie de l'état ACTIVE dans le système IoT ESP32.
+Ce document explique en détail le cycle de vie de l'état ACTIVE dans le système IoT device.
 
 ## Aperçu général
 
 L'état ACTIVE est l'état principal où le device:
+
 1. Lit les données des capteurs
 2. Formate et envoie les données via LoRa
 3. Attend un accusé de réception (ACK) du gateway
@@ -47,11 +48,13 @@ ACTIVE State Cycle
 **Méthode**: `DeviceManager.run_cycle()` → `SensorManager.read_all_sensors()`
 
 **Responsabilité**: SensorManager
+
 - Lit tous les capteurs configurés
 - Retourne un dictionnaire avec les données brutes
 - Exemple de retour: `{"bme280": {"temperature": 25.3, "humidity": 45.2, "pressure": 1013.25}}`
 
 **Logs**:
+
 ```
 [DeviceManager.run_cycle] Reading sensors...
 [DeviceManager.run_cycle] Sensor data received: {...}
@@ -62,16 +65,19 @@ ACTIVE State Cycle
 **Méthode**: `DeviceManager._format_sensor_data()`
 
 **Responsabilité**: DeviceManager
+
 - Convertit les données brutes en format compact
 - Utilise les codes configurés pour chaque capteur
 - Format final: `1{code}{value};1{code}{value};...`
 
 **Exemple**:
+
 - Entrée: `{"temperature": 25.3, "humidity": 45.2}`
 - Codes: `{"temperature": "TA", "humidity": "HA"}`
 - Sortie: `1TA25;1HA45`
 
 **Logs**:
+
 ```
 [DeviceManager._format_sensor_data] ENTRY
 [DeviceManager._format_sensor_data] Formatted bme280.temperature: TA25
@@ -86,11 +92,13 @@ ACTIVE State Cycle
 **Responsabilité**: CommunicationManager + LoRaProtocol
 
 **Format du message LoRa**:
+
 ```
 B|D|TIMESTAMP|UID|DATAS|E
 ```
 
 **Champs**:
+
 - `B`: Début de trame
 - `D`: Type de message (Data)
 - `TIMESTAMP`: Horodatage ISO (ex: 2023-01-01T12:00:00Z)
@@ -99,12 +107,14 @@ B|D|TIMESTAMP|UID|DATAS|E
 - `E`: Fin de trame
 
 **Processus**:
+
 1. Construction du message
 2. Ajout de padding (XXXX)
 3. Envoi via le hardware LoRa
 4. Attente de l'ACK (si `expect_ack=True`)
 
 **Logs**:
+
 ```
 [DeviceManager._send_sensor_data_with_ack] ENTRY
 [DeviceManager._send_sensor_data_with_ack] Sending message with ACK: {'type': 'D', 'uid': 'ESP32-001', 'datas': '1TA25;1HA45'}
@@ -116,6 +126,7 @@ B|D|TIMESTAMP|UID|DATAS|E
 ### 4. Attente de l'ACK
 
 **Processus**:
+
 1. Après l'envoi, le device passe en mode écoute
 2. Attend un message de type ACK
 3. Vérifie que l'ACK contient son UID
@@ -123,6 +134,7 @@ B|D|TIMESTAMP|UID|DATAS|E
 5. Si timeout: échec (retries possibles)
 
 **Format de l'ACK attendu**:
+
 ```
 B|ACK|TIMESTAMP|GATEWAY_PI|ESP32-001|E
 ```
@@ -132,11 +144,13 @@ B|ACK|TIMESTAMP|GATEWAY_PI|ESP32-001|E
 **Méthode**: `DeviceManager._listen_for_messages()`
 
 **Responsabilité**: DeviceManager
+
 - Écoute les messages entrants pendant un timeout configuré
 - Traite les messages reçus (ACK, commandes, etc.)
 - Publie les événements sur l'EventBus
 
 **Logs**:
+
 ```
 [DeviceManager._listen_for_messages] ENTRY
 [DeviceManager._listen_for_messages] Waiting for messages (timeout: 5000ms)
@@ -147,6 +161,7 @@ B|ACK|TIMESTAMP|GATEWAY_PI|ESP32-001|E
 ### 6. Transition vers SLEEP
 
 Après completion du cycle, l'état ACTIVE transitionne vers SLEEP:
+
 ```python
 # Dans ActiveState.handle()
 context.set_state(SleepState())

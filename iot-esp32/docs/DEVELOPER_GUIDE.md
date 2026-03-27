@@ -1,6 +1,6 @@
 # 👨‍💻 Guide du Développeur - IoT ESP32
 
-Bienvenue dans le guide du développeur pour le système IoT ESP32. Ce guide vous explique comment étendre, modifier et contribuer au projet.
+Bienvenue dans le guide du développeur pour le système IoT device. Ce guide vous explique comment étendre, modifier et contribuer au projet.
 
 ## 📋 Table des Matières
 
@@ -43,17 +43,17 @@ src/
 
 ### Design Patterns Utilisés
 
-| Pattern | Implémentation | Fichier |
-|---------|---------------|---------|
-| **Façade** | Interface unifiée | `device_manager.py` |
-| **Singleton** | Configuration unique | `config_manager.py` |
-| **Factory** | Création de capteurs | `sensor_factory.py` |
-| **Strategy** | Protocoles interchangeables | `communication/*` |
-| **Observer** | Notifications | `event_bus.py` |
-| **State** | Machine à états | `state_manager.py` |
-| **Template Method** | Lecture standardisée | `base_sensor.py` |
-| **Adapter** | Uniformisation | `sensors/*_sensor.py` |
-| **DTO** | Données standardisées | `sensor_data.py` |
+| Pattern             | Implémentation              | Fichier               |
+| ------------------- | --------------------------- | --------------------- |
+| **Façade**          | Interface unifiée           | `device_manager.py`   |
+| **Singleton**       | Configuration unique        | `config_manager.py`   |
+| **Factory**         | Création de capteurs        | `sensor_factory.py`   |
+| **Strategy**        | Protocoles interchangeables | `communication/*`     |
+| **Observer**        | Notifications               | `event_bus.py`        |
+| **State**           | Machine à états             | `state_manager.py`    |
+| **Template Method** | Lecture standardisée        | `base_sensor.py`      |
+| **Adapter**         | Uniformisation              | `sensors/*_sensor.py` |
+| **DTO**             | Données standardisées       | `sensor_data.py`      |
 
 ### Flux de Données
 
@@ -75,7 +75,7 @@ class MonNouveauSensor(BaseSensor):
     def __init__(self, name="mon_sensor", pin=None, **kwargs):
         super().__init__(name, pin, **kwargs)
         # Initialisation spécifique
-        
+
     def _read_raw(self):
         """Lire les données brutes du capteur."""
         # Implémentation spécifique
@@ -83,7 +83,7 @@ class MonNouveauSensor(BaseSensor):
             'metric1': valeur1,
             'metric2': valeur2
         }
-    
+
     def _validate(self, data):
         """Valider les données lues."""
         # Logique de validation
@@ -137,21 +137,21 @@ class MonProtocole(CommunicationProtocol):
     def __init__(self, config):
         super().__init__("MonProtocole")
         # Initialisation spécifique
-        
+
     def connect(self):
         """Établir la connexion."""
         # Implémentation spécifique
         self._connected = True
-    
+
     def disconnect(self):
         """Fermer la connexion."""
         self._connected = False
-    
+
     def send(self, data):
         """Envoyer des données."""
         # Implémentation spécifique
         return True
-    
+
     def receive(self, timeout_ms=None):
         """Recevoir des données."""
         # Implémentation spécifique
@@ -189,16 +189,16 @@ elif comm_type == 'mon_protocole':
 
 class MonNouvelEtat(DeviceState):
     """Description de l'état."""
-    
+
     name = "MON_ETAT"
-    
+
     def handle(self, context):
         """Logique de l'état."""
         print(f"[MonNouvelEtat] Exécution...")
-        
+
         # Logique spécifique
         # ...
-        
+
         # Transition vers un autre état
         context.state_manager.set_state(AutreEtat())
 ```
@@ -228,10 +228,10 @@ class SensorData:
     def __init__(self, sensor_name, sensor_type):
         # ... champs existants
         self.custom_field = None  # Nouveau champ
-    
+
     def set_custom_field(self, value):
         self.custom_field = value
-    
+
     def to_dict(self):
         data = {
             # ... champs existants
@@ -310,19 +310,19 @@ python test_facade.py
 # test_mon_composant.py
 def test_mon_composant():
     print("Testing mon composant...")
-    
+
     try:
         # Initialisation
         from core.mon_composant import MonComposant
         composant = MonComposant()
-        
+
         # Test fonctionnalité 1
         result = composant.fonction1()
         assert result == expected, f"Expected {expected}, got {result}"
-        
+
         print("  [OK] All tests passed")
         return True
-        
+
     except Exception as e:
         print(f"  [ERROR] Test failed: {e}")
         return False
@@ -352,12 +352,12 @@ def test_mon_composant():
 
 ### Problèmes Courants
 
-| Problème | Solution |
-|----------|----------|
-| Module manquant | Vérifiez les imports et le chemin
-| Erreur de configuration | Vérifiez config.json
-| Capteur non détecté | Vérifiez le câblage et les broches
-| Échec LoRa | Vérifiez la fréquence et l'antenne
+| Problème                | Solution                           |
+| ----------------------- | ---------------------------------- |
+| Module manquant         | Vérifiez les imports et le chemin  |
+| Erreur de configuration | Vérifiez config.json               |
+| Capteur non détecté     | Vérifiez le câblage et les broches |
+| Échec LoRa              | Vérifiez la fréquence et l'antenne |
 
 ## 🤝 Contribution
 

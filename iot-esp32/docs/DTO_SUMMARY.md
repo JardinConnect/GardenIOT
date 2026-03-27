@@ -2,9 +2,10 @@
 
 ## Ce qui a été accompli
 
-Le **Data Transfer Object (DTO) Pattern** a été implémenté avec succès dans le projet IoT ESP32. Voici ce qui a été réalisé :
+Le **Data Transfer Object (DTO) Pattern** a été implémenté avec succès dans le projet IoT device. Voici ce qui a été réalisé :
 
-###  Fichiers créés
+### Fichiers créés
+
 1. **`src/models/sensor_data.py`** - Classes principales du DTO
    - `SensorReading` - Représente une lecture individuelle
    - `SensorData` - DTO principal pour les données des capteurs
@@ -19,7 +20,8 @@ Le **Data Transfer Object (DTO) Pattern** a été implémenté avec succès dans
    - Exemples d'utilisation
    - Avantages et prochaines étapes
 
-###  Fichiers modifiés
+### Fichiers modifiés
+
 1. **`src/sensors/base_sensor.py`**
    - Ajout de l'import du DTO
    - Modification de la méthode `read()` pour retourner un `SensorData`
@@ -38,28 +40,33 @@ Le **Data Transfer Object (DTO) Pattern** a été implémenté avec succès dans
    - Adaptation de `_format_sensor_data()` pour utiliser le DTO
    - Utilisation du format compact pour LoRa
 
-###  Fonctionnalités implémentées
+### Fonctionnalités implémentées
 
 #### 1. **Standardisation complète**
+
 - Tous les capteurs retournent maintenant un objet `SensorData`
 - Format cohérent à travers tout le système
 - Plus de dictionnaires simples non typés
 
 #### 2. **Double sérialisation**
+
 - **Format complet** pour WiFi/HTTP : `dto.to_dict()`
 - **Format compact** pour LoRa : `dto.to_compact()`
 - Optimisation automatique de la taille des payloads
 
 #### 3. **Gestion des erreurs intégrée**
+
 - Champ `is_valid` pour valider les données
 - Champ `error` pour les messages d'erreur
 - Méthode `set_error()` pour marquer les données invalides
 
 #### 4. **Gestion des unités**
+
 - Détection automatique des unités basée sur le nom de la métrique
 - Support des unités standard : °C, %, lux, hPa, etc.
 
 #### 5. **Compatibilité totale**
+
 - Tous les capteurs existants fonctionnent sans modification
 - Intégration transparente avec EventBus et AlertManager
 - Format compatible avec les protocoles de communication existants
@@ -75,11 +82,12 @@ Le **Data Transfer Object (DTO) Pattern** a été implémenté avec succès dans
 ## 🧪 Tests
 
 Tous les tests passent avec succès :
--  Création et manipulation de `SensorReading`
--  Création et manipulation de `SensorData`
--  Sérialisation et désérialisation
--  Format compact pour LoRa
--  Intégration avec plusieurs types de capteurs
+
+- Création et manipulation de `SensorReading`
+- Création et manipulation de `SensorData`
+- Sérialisation et désérialisation
+- Format compact pour LoRa
+- Intégration avec plusieurs types de capteurs
 
 ## 🎯 Avantages obtenus
 
@@ -110,7 +118,7 @@ Tous les tests passent avec succès :
 
 L'implémentation du DTO Pattern est un succès complet ! Le système dispose maintenant d'une structure de données standardisée, extensible et maintenable pour toutes les données des capteurs. Cette implémentation améliore significativement la qualité du code et prépare le terrain pour des fonctionnalités avancées futures.
 
-**Statut** :  Terminé et testé
-**Compatibilité** :  100% rétrocompatible
-**Documentation** :  Complète
-**Tests** :  Tous passés
+**Statut** : Terminé et testé
+**Compatibilité** : 100% rétrocompatible
+**Documentation** : Complète
+**Tests** : Tous passés

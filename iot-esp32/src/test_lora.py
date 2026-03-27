@@ -61,7 +61,7 @@ def test_lora_communication():
         # Send test message (as dictionary format expected by LoRaProtocol)
         test_message = {
             'type': 'D',
-            'datas': '1HS24;1TS31'
+            'data': '1HS24;1TS31'
         }
         print(f"Sending test message: {test_message}")
 

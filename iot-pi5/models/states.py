@@ -54,43 +54,65 @@ class NormalState(State):
 
 
 class PairingState(State):
-    """État de mode appariement"""
+    """
+    État de mode appariement.
+    
+    Flow:
+    1. Broadcast un message P toutes les 2s via LoRa (uid=parent_id)
+    2. ESP32 reçoit le P, extrait parent_id, génère son propre UID (machine.unique_id)
+    3. ESP32 renvoie un PA avec son UID
+    4. Pi5 reçoit le PA → enregistre le child → retour en NORMAL
+    5. Timeout après {duration}s si aucun PA reçu
+    """
+    
+    BROADCAST_INTERVAL = 2.0  # secondes entre chaque broadcast
     
     def __init__(self, gateway_core, duration=30):
         super().__init__(gateway_core)
         self.duration = duration
         self.end_time = 0
+        self._last_broadcast = 0
     
     def handle(self):
-        """Gère la temporisation du mode pairing"""
+        """Broadcast P message périodiquement et vérifie le timeout."""
         import time
-        if time.time() > self.end_time:
+        now = time.time()
+        
+        if now > self.end_time:
+            print("[PairingState] Timeout — aucun device pairé")
             self.gateway.set_state(SystemState.NORMAL)
+            return
+        
+        if now - self._last_broadcast >= self.BROADCAST_INTERVAL:
+            self._broadcast_pairing()
+            self._last_broadcast = now
     
     def enter(self):
-        """Active le mode pairing"""
+        """Active le mode pairing."""
         import time
-        print(f"🔗 Mode PAIRING activé ({self.duration}s)")
         self.end_time = time.time() + self.duration
-        self.gateway.lora_comm.set_timeout(3.0)  # Timeout plus long pour pairing
-        
-        # Notifier via MQTT
-        self.gateway.mqtt_comm.publish(
-            topic="garden/system/state",
-            payload={"state": "pairing", "duration": self.duration},
-            qos=0
-        )
+        self._last_broadcast = 0
+        print(f"[PairingState] Mode PAIRING activé ({self.duration}s)")
     
     def exit(self):
-        """Désactive le mode pairing"""
-        print("🔗 Mode PAIRING désactivé")
+        """Désactive le mode pairing."""
+        print("[PairingState] Mode PAIRING désactivé")
+    
+    def _broadcast_pairing(self):
+        """Envoie un message P via LoRa: B|P|timestamp|parent_id||E"""
+        from models.messages import LoRaMessage, MessageType
+        from datetime import datetime
         
-        # Notifier via MQTT
-        self.gateway.mqtt_comm.publish(
-            topic="garden/system/state",
-            payload={"state": "normal"},
-            qos=0
+        parent_id = self.gateway.child_repo.get_parent_id()
+        msg = LoRaMessage(
+            message_type=MessageType.PAIRING,
+            timestamp=datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ"),
+            uid=parent_id,
+            data="",
         )
+        self.gateway.lora_comm.send(msg.to_lora_format())
+        remaining = int(self.end_time - __import__('time').time())
+        print(f"[PairingState] Broadcast P → parent_id={parent_id} ({remaining}s left)")
 
 
 class MaintenanceState(State):

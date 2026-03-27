@@ -10,7 +10,15 @@ class DHT22Sensor(BaseSensor):
         self.dht = dht.DHT22(self.pin)
         self._retry_count = kwargs.get('retry_count', 3)
         self._retry_delay = kwargs.get('retry_delay', 100)  # ms
-    
+        self.init_hardware()
+
+    def _check_hardware(self):
+        try:
+            self.dht.measure()
+            return True
+        except OSError:
+            return False
+
     def _read_raw(self):
         for attempt in range(self._retry_count):
             try:
@@ -19,8 +27,8 @@ class DHT22Sensor(BaseSensor):
                 humidity = self.dht.humidity()
                 
                 return {
-                    'temperature': temperature,
-                    'humidity': humidity
+                    'TA': temperature,
+                    'HA': humidity
                 }
             except OSError as e:
                 if attempt < self._retry_count - 1:
@@ -36,7 +44,7 @@ class DHT22Sensor(BaseSensor):
         if data is None:
             return False
             
-        t = data.get('temperature')
-        h = data.get('humidity')
+        t = data.get('TA')
+        h = data.get('HA')
         return (t is not None and -40 <= t <= 80 and
                 h is not None and 0 <= h <= 100)

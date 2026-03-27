@@ -55,7 +55,9 @@ class SensorManager:
             try:
                 # Prepare parameters for sensor
                 params = {
-                    'name': sensor_cfg['name'],
+                    'name': sensor_cfg.get('name'),
+                    'codes': sensor_cfg.get('codes', {}),
+                    'index': sensor_cfg.get('index', 1),
                     'pin': sensor_cfg.get('pin'),
                     'i2c': self.hardware.i2c,  # Pass I2C bus if available
                 }
@@ -65,28 +67,33 @@ class SensorManager:
                     params.update(sensor_cfg['params'])
                 
                 # Create sensor via Factory
-                sensor = SensorFactory.create(sensor_cfg['type'], **params)
-                self.sensors[sensor_cfg['name']] = sensor
+                sensor = SensorFactory.create(sensor_cfg.get('type'), **params)
+                identifiant = f"{sensor_cfg.get('index')}_{sensor_cfg.get('name')}"
                 
-                print(f"[SensorManager] Sensor '{sensor_cfg['name']}' ({sensor_cfg['type']}) initialized")
+                if not sensor._hardware_available:
+                    print(f"[SensorManager] Sensor '{identifiant}' skipped - no hardware")
+                    continue
+                
+                self.sensors[identifiant] = sensor
+                print(f"[SensorManager] Sensor '{identifiant}' ({sensor_cfg.get('type')}) initialized")
             
             except Exception as e:
-                print(f"[SensorManager] Failed to init sensor '{sensor_cfg['name']}': {e}")
+                print(f"[SensorManager] Failed to init sensor '{sensor_cfg.get('name')}': {e}")
                 
                 # Publish error event
                 self.event_bus.publish('sensor.init_error', {
-                    'sensor': sensor_cfg['name'],
+                    'sensor': sensor_cfg.get('type'),
                     'error': str(e)
                 })
         
         print(f"[SensorManager] {len(self.sensors)} sensors ready")
     
-    def read_all_sensors(self):
+    def read_all_sensors(self, timestamp=None):
         """
         Read all sensors and return raw data in compact format.
         Returns:
-            dict: {sensor_name: {index_code: value, ...}}
-            Example: {"air": {"1TA": 25.3, "1HA": 45.0}, "soil": {"1TS": 22.1}}
+            dict: {index_code: value, ...}
+            Example: {"1TA": 25.3, "1HA": 45.0, "1TS": 22.1}
         """
         results = {}
 
@@ -94,49 +101,19 @@ class SensorManager:
             try:
                 dto = sensor.read()
                 if dto and dto.is_valid:
-                    codes, index = self.config.get_sensor_identifier(name)
-                    results[name] = dto.to_compact(codes, index)
+
+                    # Merge the compact data
+                    results.update(dto.to_compact())
+
+                    self.event_bus.publish('sensor.data', {
+                        'sensor': sensor.name,
+                        'data': dto.to_dict(),
+                        'timestamp': timestamp
+                    })
             except Exception as e:
                 print(f"[SensorManager] Error reading {name}: {e}")
 
         return results
-    
-    def read_sensor(self, sensor_name):
-        """
-        Read a specific sensor by name.
-        
-        Args:
-            sensor_name: name of the sensor
-            
-        Returns:
-            dict or None: sensor data
-        """
-        sensor = self.sensors.get(sensor_name)
-        
-        if not sensor:
-            print(f"[SensorManager] Sensor '{sensor_name}' not found")
-            return None
-        
-        try:
-            data = sensor.read()
-            
-            if data:
-                self.event_bus.publish('sensor.data', {
-                    'sensor': sensor_name,
-                    'data': data
-                })
-            
-            return data
-        
-        except Exception as e:
-            print(f"[SensorManager] Error reading {sensor_name}: {e}")
-            
-            self.event_bus.publish('sensor.read_error', {
-                'sensor': sensor_name,
-                'error': str(e)
-            })
-            
-            return None
     
     def get_sensor(self, sensor_name):
         """Get sensor instance by name"""

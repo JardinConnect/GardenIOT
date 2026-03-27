@@ -56,6 +56,8 @@ class LoRaProtocol(CommunicationProtocol):
         
         # Construire le message
         built_message = self._build_message(message)
+        # TODO: Supprimer si possible l'ajout du padding
+        # Ajouter un padding de 4 bytes au début du message
         padded_message = "XXXX" + built_message
         frame = padded_message.encode('utf-8')
         
@@ -70,33 +72,14 @@ class LoRaProtocol(CommunicationProtocol):
                 self._lora.send(frame)
                 self._stats['sent'] += 1
                 log("Message sent successfully")
+                return True
             except Exception as e:
                 log(f"Send error: {e}")
                 self._stats['errors'] += 1
                 if attempt < self._max_retries:
                     time.sleep(0.5)
                 continue
-            
-            # Si on n'attend pas d'ACK, c'est terminé
-            if not expect_ack:
-                self._lora.recv()  # Remettre en mode écoute
-                log("Message sent (no ACK expected)")
-                return True
-            
-            # Attendre l'ACK
-            if self._wait_for_ack():
-                log("ACK received successfully")
-                self._lora.recv()  # Remettre en mode écoute
-                return True
-            else:
-                log(f"No ACK received, retrying ({attempt}/{self._max_retries})")
-                if attempt < self._max_retries:
-                    time.sleep(0.5)
-        
-        # Toutes les tentatives ont échoué
-        self._stats['ack_fail'] += 1
-        log("Failed: no ACK after all attempts")
-        self._lora.recv()  # Remettre en mode écoute
+
         return False
     
     def receive(self, timeout_ms=None):
@@ -109,48 +92,58 @@ class LoRaProtocol(CommunicationProtocol):
         Returns:
             Dictionnaire avec les champs du message ou None si timeout
         """
-        timeout = (timeout_ms / 1000) if timeout_ms else self._listen_timeout
-        log(f"Listening for messages (timeout: {timeout}s)")
-        
+        timeout_ms_actual = timeout_ms if timeout_ms else int(self._listen_timeout * 1000)
+        log(f"Listening for messages (timeout: {timeout_ms_actual}ms)")
+
+        # A packet may have been buffered by the interrupt handler while the caller
+        # was busy processing the previous message (e.g. _handle_incoming for 'A').
+        # Check before entering Standby so we don't lose it.
+        if self._rx_buffer is not None:
+            raw_payload = self._rx_buffer
+            self._rx_buffer = None
+            msg = self._process_raw_payload(raw_payload)
+            if msg:
+                return msg
+
         # Initialiser le mode réception
         self._lora._write(0x01, 0x81)  # Standby
         self._lora._write(0x12, 0xFF)  # Clear IRQ
         self._lora.recv()  # RX mode
         
-        start_time = time.time()
+        start_time = time.ticks_ms()
         
-        while (time.time() - start_time) < timeout:
-            # Lire le registre IRQ pour détecter les paquets
+        while time.ticks_diff(time.ticks_ms(), start_time) < timeout_ms_actual:
+            # Check if interrupt handler buffered a packet during sleep_ms(10)
+            if self._rx_buffer is not None:
+                raw_payload = self._rx_buffer
+                self._rx_buffer = None
+                msg = self._process_raw_payload(raw_payload)
+                if msg:
+                    self._lora.recv()
+                    return msg
+                self._lora.recv()
+                continue
+
+            # Fallback: poll IRQ register (fires when interrupt didn't steal the packet)
             irq_flags = self._lora._read(0x12)
             
             if irq_flags & 0x40:  # RxDone - Message reçu
                 self._lora._write(0x12, 0xFF)  # Clear IRQ
                 
                 try:
-                    # Lire le payload
                     raw_payload = self._lora._read_payload()
-                    
-                    if raw_payload:
-                        # Décoder et parser le message
-                        msg_str = self._decode_payload(raw_payload)
-                        if msg_str:
-                            frame = self._extract_frame(msg_str)
-                            if frame:
-                                message = self._parse_message(frame)
-                                if message:
-                                    self._stats['received'] += 1
-                                    log(f"Message received: {frame}")
-                                    self._lora.recv()  # Relancer l'écoute
-                                    return message
+                    msg = self._process_raw_payload(raw_payload)
+                    if msg:
+                        self._lora.recv()
+                        return msg
                 except Exception as e:
                     log(f"Receive error: {e}")
                 
-                # Relancer l'écoute après erreur
                 self._lora.recv()
             elif irq_flags & 0x20:  # CRC Error
                 log("CRC Error detected")
                 self._lora._write(0x12, 0xFF)  # Clear IRQ
-                self._lora.recv()  # Relancer l'écoute
+                self._lora.recv()
             
             time.sleep_ms(10)
         
@@ -171,6 +164,31 @@ class LoRaProtocol(CommunicationProtocol):
     def _on_receive(self, payload):
         """Callback appelé par la lib LoRa quand un message arrive."""
         self._rx_buffer = payload
+
+    def _process_raw_payload(self, raw_payload):
+        """Decode, extract frame and parse a raw bytes payload. Returns message dict or None."""
+        if not raw_payload:
+            log("DIAG: _process_raw_payload got empty payload")
+            return None
+        try:
+            msg_str = self._decode_payload(raw_payload)
+            if not msg_str:
+                log("DIAG: _decode_payload returned None")
+                return None
+            frame = self._extract_frame(msg_str)
+            if not frame:
+                log(f"DIAG: _extract_frame failed for msg: {msg_str}")
+                return None
+            message = self._parse_message(frame)
+            if not message:
+                log(f"DIAG: _parse_message failed for frame: {frame}")
+                return None
+            self._stats['received'] += 1
+            log(f"Message received: {frame}")
+            return message
+        except Exception as e:
+            log(f"DIAG: _process_raw_payload error: {e}")
+            return None
     
     def _decode_payload(self, payload):
         """Décode les bytes en string avec nettoyage des headers pourris."""
@@ -217,86 +235,38 @@ class LoRaProtocol(CommunicationProtocol):
             return payload[4:]  # Retourner le payload sans les 4 premiers bytes
         
         return payload
-    
-    # def _build_message(self, message):
-    #     """
-    #     Construit la trame LoRa.
-    #     Format: B|TYPE|TIMESTAMP|UID|DATAS|E
-    #     """
-    #     msg_type = message.get('type', 'D')
-    #     datas = message.get('datas', '')
-    #     timestamp = self._get_timestamp()
-        
-    #     return f"B|{msg_type}|{timestamp}|{self._uid}|{datas}|E"
 
     def _build_message(self, payload):
         """
         Format payload for LoRa transmission.
         Input: {"type": "D", "uid": "ESP32-001", "timestamp": 1234567890, "data": {"1TA": 25, "1HA": 45}}
-        Format: B|TYPE|TIMESTAMP|UID|DATAS|E
+        Format: B|TYPE|TIMESTAMP|UID|DATA|E
         """
         if not payload:
             return None
 
         # Extraire les données
-        msg_type = payload["type"]
-        uid = self._uid  # Utiliser l'UID du device manager
-        timestamp = payload["timestamp"]
-        data = payload["data"]
+        msg_type = payload.get("type", "D")
+        uid = self._uid
+        timestamp = payload.get("timestamp", "")
+        data = payload.get("data", {})
 
         # Formater les données en chaîne LoRa
-        data_str = ";".join([f"{k}{v}" for k, v in data.items()])
+        if isinstance(data, dict):
+            if msg_type == 'D':
+                data_str = ";".join([f"{k}{v}" for k, v in data.items()])
+            elif msg_type == 'S':
+                # Explicit order: status;count — dict.values() order is not guaranteed in MicroPython
+                data_str = "{};{}".format(data.get('status', 'O'), data.get('count', 0))
+            elif msg_type == 'T':
+                data_str = "{};{};{};{}".format(data.get('alert_id', 'O'), data.get('level', 'C'), data.get('identifier', ''), data.get('value', 0))
+            else:
+                data_str = ";".join([str(v) for v in data.values()])
+        else:
+            data_str = str(data)
 
         # Construire le message LoRa
         return f"B|{msg_type}|{timestamp}|{uid}|{data_str}|E"
-
-    # def _get_timestamp(self):
-    #     """Récupère le timestamp depuis le RTC ou fallback."""
-    #     if self._rtc:
-    #         try:
-    #             dt = self._rtc.datetime()
-    #             return "{:04d}-{:02d}-{:02d}T{:02d}:{:02d}:{:02d}Z".format(
-    #                 dt[0], dt[1], dt[2], dt[4], dt[5], dt[6]
-    #             )
-    #         except:
-    #             pass
-        
-    #     t = time.localtime()
-    #     return "{:04d}-{:02d}-{:02d}T{:02d}:{:02d}:{:02d}Z".format(
-    #         t[0], t[1], t[2], t[3], t[4], t[5]
-    #     )
-    
-    def _wait_for_ack(self):
-        """Attend un ACK pendant le timeout configuré."""
-        log("Waiting for ACK response from Pi5...")
-        timeout = self._ack_timeout / 1000  # Convert ms to seconds
-        start_time = time.time()
-        
-        while (time.time() - start_time) < timeout:
-            remaining_time = timeout - (time.time() - start_time)
-            log(f"Listening for ACK... {remaining_time:.1f}s remaining")
-            
-            # Check for incoming messages using polling
-            received_message = self.receive(2000)  # 2 second timeout
-            
-            if received_message:
-                msg_type = received_message.get('type', 'UNKNOWN')
-                log(f"Received message type: {msg_type}")
-                
-                # Check if it's an ACK message (accept both 'ACK' and 'PA')
-                if msg_type in ['ACK', 'PA']:
-                    log("ACK received from Pi5!")
-                    self._stats['ack_ok'] += 1
-                    return True
-                else:
-                    log(f"Received non-ACK message: {received_message}")
-                    # Continuer à attendre l'ACK, ignorer les autres messages pour l'instant
-            
-            # Small delay to prevent busy waiting
-            time.sleep(0.5)
-        
-        log("No ACK received within timeout")
-        return False
     
     def _extract_frame(self, raw):
         """Extrait la trame B|...|E du message brut."""
@@ -314,7 +284,7 @@ class LoRaProtocol(CommunicationProtocol):
     def _parse_message(self, frame):
         """
         Parse une trame LoRa et valide le format de base.
-        Format: B|TYPE|TIMESTAMP|UID|DATAS|E
+        Format: B|TYPE|TIMESTAMP|UID|DATA|E
         
         Args:
             frame: Trame brute au format B|...|E
@@ -332,7 +302,7 @@ class LoRaProtocol(CommunicationProtocol):
             
             # Validation du type de message
             msg_type = parts[1]
-            valid_types = ['D', 'ACK', 'PA', 'U', 'A', 'C']  # Types de messages connus
+            valid_types = ['D', 'ACK', 'PA', 'P', 'U', 'A', 'C', 'S', 'T']  # Types de messages connus
             if msg_type not in valid_types:
                 log(f"Unknown message type: {msg_type}")
                 return None
@@ -347,7 +317,7 @@ class LoRaProtocol(CommunicationProtocol):
                 'type': msg_type,
                 'timestamp': parts[2],
                 'uid': uid,
-                'datas': parts[4] if len(parts) > 5 else ''
+                'data': parts[4] if len(parts) > 5 else ''
             }
         except Exception as e:
             log(f"Message parse error: {e}")

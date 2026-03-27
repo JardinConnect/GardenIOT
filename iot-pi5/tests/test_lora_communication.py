@@ -36,7 +36,7 @@ class TestLoRaCommunication(unittest.TestCase):
         time.sleep(1.0)
         
         # Wait for incoming message from ESP32
-        print("Waiting for test message from ESP32...")
+        print("Waiting for test message from device...")
         message_received = False
         start_time = time.time()
         timeout = 15  # 15 seconds timeout

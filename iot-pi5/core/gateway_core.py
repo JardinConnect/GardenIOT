@@ -63,33 +63,126 @@ class GatewayCore:
         self.child_repo.initialize()
         self.message_queue = MessageQueue(self)
 
-        # Lier le callback MQTT et LoRa au MessageRouter
+        # Wire LoRa and MQTT callbacks to MessageRouter
         self.mqtt_comm.set_message_callback(self.message_router.route_from_mqtt)
         self.lora_comm.set_message_callback(self.message_router.route_from_lora)
 
-        # S'abonner aux événements
-        # self.event_bus.subscribe("esp32.available", self._on_esp_available)
+        # Subscribe to domain events published by MessageRouter
+        self.event_bus.subscribe("device.data.received",    self._on_data_received)
+        self.event_bus.subscribe("device.cycle.done",       self._on_cycle_done)
+        self.event_bus.subscribe("device.outbound.ack",     self._on_outbound_ack)
+        self.event_bus.subscribe("device.pairing.request",  self._on_pairing_request)
+        self.event_bus.subscribe("device.pairing.ack",      self._on_pairing_ack)
+        self.event_bus.subscribe("device.unpaired",         self._on_unpaired)
+        self.event_bus.subscribe("device.alert.triggered",  self._on_alert_triggered)
+        self.event_bus.subscribe("device.alert.config.ack", self._on_alert_config_ack)
     
-    def start(self):
-        """Démarre le système Gateway"""
-        print("🚀 Démarrage du système Gateway...")
-        
-        # Passer en état normal
+    # ------------------------------------------------------------------
+    # Domain event handlers
+    # ------------------------------------------------------------------
+
+    def _on_data_received(self, payload: dict):
+        """Forward sensor data to MQTT."""
+        self.mqtt_comm.publish("garden/analytics", {
+            "uid": payload["uid"],
+            "timestamp": payload["timestamp"],
+            "sensors": payload["sensors"],
+        }, qos=1)
+
+    def _on_cycle_done(self, payload: dict):
+        """
+        Decide ACK state (L or S), send ACK to ESP32, and trigger outbound
+        cycle if the gateway has queued messages for that device.
+        """
+        uid = payload["uid"]
+        ack_status = payload["ack_status"]
+        has_messages = self.message_queue.has_pending(uid)
+        ack_state = 'L' if (ack_status == 'OK' and has_messages) else 'S'
+
+        time.sleep(0.15)  # Let ESP32 radio transition from TX to RX before ACK arrives
+        self.lora_comm.send_ack(uid, ack_status, ack_state)
+        print(f"[GatewayCore] ACK → {uid}: {ack_status};{ack_state}")
+
+        if ack_state == 'L':
+            self.event_bus.publish("device.outbound.start", uid)
+
+    def _on_outbound_ack(self, payload: dict):
+        """Log the result of the gateway → ESP32 send cycle."""
+        uid = payload["uid"]
+        status = "successful" if payload["success"] else "failed"
+        print(f"[GatewayCore] Outbound cycle {status} for {uid}")
+
+    def _on_pairing_request(self, payload: dict):
+        """Legacy: handle pairing request from ESP32 (kept for backward compat)."""
+        uid = payload["uid"]
+        print(f"[GatewayCore] Pairing request from {uid} (ignored — Pi5 initiates pairing)")
+
+    def _on_pairing_ack(self, payload: dict):
+        """ESP32 confirmed pairing — register child and return to NORMAL."""
+        from models.states import PairingState as _PS
+
+        uid = payload["uid"]
+
+        if not isinstance(self.current_state, _PS):
+            print(f"[GatewayCore] Pairing ACK from {uid} ignored — not in pairing mode")
+            return
+
+        success = self.child_repo.add_child(uid)
+        if success:
+            print(f"[GatewayCore] New device paired: {uid}")
+        else:
+            print(f"[GatewayCore] Device already known: {uid}")
+
+        self.mqtt_comm.publish(
+            "garden/pairing/result",
+            {"uid": uid, "status": "ok", "parent_id": self.child_repo.get_parent_id()},
+            qos=1,
+        )
+
         self.set_state(SystemState.NORMAL)
+
+    def _on_unpaired(self, payload: dict):
+        """Remove device from repo and notify MQTT."""
+        uid = payload["uid"]
+        if self.child_repo.remove_child(uid):
+            print(f"[GatewayCore] Device unpaired: {uid}")
+            self.mqtt_comm.publish(
+                "garden/pairing/unpair",
+                {"uid": uid, "action": "unpaired"},
+                qos=0,
+            )
+
+    def _on_alert_triggered(self, payload: dict):
+        """Forward parsed alert trigger to MQTT."""
+        self.mqtt_comm.publish("garden/alerts/trigger", payload["alert"], qos=1)
+
+    def _on_alert_config_ack(self, payload: dict):
+        """Forward alert config acknowledgement to MQTT."""
+        uid = payload["uid"]
+        self.mqtt_comm.publish(
+            f"garden/alerts/ack/{uid}",
+            {"uid": uid, "status": "received",
+             "data": payload["data"], "timestamp": payload["timestamp"]},
+            qos=0,
+        )
+
+    # ------------------------------------------------------------------
+    # Lifecycle
+    # ------------------------------------------------------------------
+
+    def start(self):
+        """Start the gateway system."""
+        print("[GatewayCore] Starting gateway system...")
         
+        self.set_state(SystemState.NORMAL)
         self.running = True
         self.stats["uptime"] = time.time()
-        
-        # Démarrer le thread LoRa
         self._start_lora_thread()
-        
-        print(" Système prêt")
-        
-        # Boucle principale
+        print("[GatewayCore] System ready")
         self.main_loop()
     
     def _start_lora_thread(self):
-        """Démarre un thread dédié pour la réception LoRa"""
+        """Start the dedicated LoRa receiver thread."""
         import threading
         self.lora_running = True
         self.lora_thread = threading.Thread(
@@ -98,172 +191,99 @@ class GatewayCore:
             daemon=True
         )
         self.lora_thread.start()
-        print("📡 Thread LoRa démarré")
-    
+        print("[GatewayCore] LoRa receiver thread started")
+
     def _lora_receiver_loop(self):
-        """Boucle dédiée à la réception des messages LoRa"""
-        print("📡 Thread LoRa: démarré")
+        """Blocking loop that continuously reads LoRa frames and triggers callbacks."""
+        print("[GatewayCore] LoRa thread: running")
         try:
             while self.lora_running and self.running:
                 try:
-                    # Appeler receive() qui a déjà un timeout interne de 2 secondes
-                    # et déclenchera le callback si message reçu
                     self.lora_comm.receive()
-                    # Pas besoin de sleep ici car receive() est bloquant avec timeout
                 except Exception as e:
-                    print(f"📡 Thread LoRa: erreur {e}")
-                    time.sleep(1)  # Attendre avant de réessayer en cas d'erreur
+                    print(f"[GatewayCore] LoRa thread error: {e}")
+                    time.sleep(1)
         except Exception as e:
-            print(f"📡 Thread LoRa: erreur fatale {e}")
-        print("📡 Thread LoRa: arrêté")
+            print(f"[GatewayCore] LoRa thread fatal error: {e}")
+        print("[GatewayCore] LoRa thread: stopped")
 
     def main_loop(self):
-        """
-        Boucle principale du système Gateway
-        
-        Cycle de traitement:
-        1. Gère l'état courant (Normal/Pairing/Maintenance)
-        2. Vérifie la connexion MQTT
-        3. Met à jour les statistiques
-        
-        La réception LoRa est gérée par un thread dédié
-        """
+        """Main loop: handles system state and MQTT health. LoRa is handled by a dedicated thread."""
         start_time = time.time()
         try:
             while self.running:
-                # 1. Gérer les états
                 if self.current_state:
                     self.current_state.handle()
-
-                # 2. Vérifier MQTT (déjà géré par callbacks)
                 self.process_mqtt_messages()
-                
-                # 3. Mettre à jour les statistiques
                 self.stats["uptime"] = time.time() - start_time
-                
-                # Petit délai pour éviter de saturer le CPU
                 time.sleep(0.1)
-                
         except KeyboardInterrupt:
-            self.shutdown("Arrêt demandé par l'utilisateur")
+            self.shutdown("Keyboard interrupt")
         except Exception as e:
-            self.shutdown(f"Erreur fatale: {e}", True)
+            self.shutdown(f"Fatal error: {e}", True)
     
 
-    # def process_lora_messages(self):
-    #     """Traite les messages LoRa entrants"""
-    #     try:
-    #         message = self.lora_comm.receive()
-            
-    #         if not message:
-    #             return
-            
-    #         self.stats["messages_received"] += 1
-            
-    #         # Parser le message
-    #         lora_msg = LoRaMessage.from_lora_format(message)
-            
-    #         if not lora_msg:
-    #             self.stats["errors"] += 1
-    #             return
-
-    #          # Publier un événement "ESP32 disponible"
-    #         self.event_bus.publish("esp32.available", lora_msg.uid)
-            
-    #         # Envoyer ACK immédiatement (sauf pour les ACK entrants)
-    #         if lora_msg.message_type != MessageType.ACK:
-    #             gateway_uid = self.config.get("gateway_uid", "GATEWAY_PI")
-    #             self.lora_comm.send_ack(lora_msg.uid, gateway_uid)
-            
-    #         # Router le message vers MQTT (sauf pour les ACK)
-    #         if lora_msg.message_type != MessageType.ACK:
-    #             self.message_router.route_from_lora(lora_msg)
-                
-    #     except Exception as e:
-    #         self.stats["errors"] += 1
-    
-    # def _send_ack(self, target_uid: str):
-    #     """Envoie un ACK à un device ESP32"""
-    #     from datetime import datetime
-    #     timestamp = datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
-        
-    #     # Format attendu par l'ESP32: B|ACK|timestamp|gateway_uid|TO:device_uid|E
-    #     gateway_uid = self.config.get("gateway_uid", "GATEWAY_PI")
-    #     ack_message = f"B|ACK|{timestamp}|{gateway_uid}|TO:{target_uid}|E"
-        
-    #     self.lora_comm.send(ack_message, retries=1)
-    #     print(f"📤 ACK envoyé à {target_uid}")
-
-    
     def process_mqtt_messages(self):
-        """Traite les messages MQTT entrants"""
+        """Check MQTT connection health and reconnect if needed."""
         try:
-            # Le MQTT est géré par callbacks, mais on peut vérifier l'état de la connexion
             if not self.mqtt_comm.is_connected():
-                print(" Connexion MQTT perdue, tentative de reconnexion...")
+                print("[GatewayCore] MQTT connection lost — reconnecting...")
                 self.mqtt_comm.reconnect()
-        
         except Exception as e:
-            print(f" Erreur traitement MQTT: {e}")
+            print(f"[GatewayCore] MQTT error: {e}")
             self.stats["errors"] += 1
     
     def set_state(self, state: SystemState):
-        """Change l'état du système"""
+        """Transition to a new system state."""
         if self.current_state:
             self.current_state.exit()
-        
         self.current_state = self.states[state]
         self.current_state.enter()
-    
+
     def trigger_pairing_mode(self):
-        """Active le mode pairing"""
+        """Activate pairing mode."""
         if self.current_state and isinstance(self.current_state, PairingState):
-            print("ℹ️ Mode pairing déjà actif")
+            print("[GatewayCore] Pairing mode already active")
             return
-        
-        print("🔗 Activation du mode pairing...")
+        print("[GatewayCore] Activating pairing mode")
         self.set_state(SystemState.PAIRING)
-    
+
     def handle_button_press(self, duration: float):
-        """Gère l'appui sur le bouton physique"""
+        """Handle physical button press."""
         if duration >= 15:
-            print("🗑️ Reset complet des enfants")
+            print("[GatewayCore] Full child reset triggered by button")
             self.child_repo.remove_all_children()
         elif duration >= 3:
-            print("🔗 Activation pairing par bouton")
+            print("[GatewayCore] Pairing mode triggered by button")
             self.trigger_pairing_mode()
     
     def shutdown(self, reason: str, error: bool = False):
-        """Arrêt propre du système"""
-        print(f"\n🛑 {reason}")
-        
+        """Graceful shutdown."""
+        print(f"[GatewayCore] Shutting down: {reason}")
         if error:
             import traceback
             traceback.print_exc()
-        
-        # Arrêter le thread LoRa
+
         self.lora_running = False
         if self.lora_thread:
             self.lora_thread.join(timeout=5)
             if self.lora_thread.is_alive():
-                print("⚠️  Thread LoRa n'a pas pu s'arrêter proprement")
-        
-        # Arrêter les composants
+                print("[GatewayCore] Warning: LoRa thread did not stop cleanly")
+
         if self.mqtt_comm:
             self.mqtt_comm.disconnect()
-        
         if self.lora_comm:
             self.lora_comm.shutdown()
-        
-        print("👋 Système arrêté")
+
+        print("[GatewayCore] System stopped")
         self.running = False
     
     def get_stats(self) -> Dict[str, Any]:
-        """Retourne les statistiques du système"""
+        """Return a copy of the current statistics."""
         return self.stats.copy()
-    
+
     def get_system_info(self) -> Dict[str, Any]:
-        """Retourne les informations système"""
+        """Return current system information."""
         return {
             "state": self.current_state.__class__.__name__ if self.current_state else "unknown",
             "children_count": len(self.child_repo.get_all_children()) if self.child_repo else 0,
