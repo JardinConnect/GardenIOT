@@ -115,16 +115,16 @@ class GatewayCore:
     def _on_pairing_request(self, payload: dict):
         """Legacy: handle pairing request from ESP32 (kept for backward compat)."""
         uid = payload["uid"]
-        print(f"[GatewayCore] Pairing request from {uid} (ignored — Pi5 initiates pairing)")
+        print(f"[GatewayCore] Pairing request from {uid} (ignored - Pi5 initiates pairing)")
 
     def _on_pairing_ack(self, payload: dict):
-        """ESP32 confirmed pairing — register child and return to NORMAL."""
+        """ESP32 confirmed pairing - register child and return to NORMAL."""
         from models.states import PairingState as _PS
 
         uid = payload["uid"]
 
         if not isinstance(self.current_state, _PS):
-            print(f"[GatewayCore] Pairing ACK from {uid} ignored — not in pairing mode")
+            print(f"[GatewayCore] Pairing ACK from {uid} ignored - not in pairing mode")
             return
 
         success = self.child_repo.add_child(uid)
@@ -165,6 +165,40 @@ class GatewayCore:
              "data": payload["data"], "timestamp": payload["timestamp"]},
             qos=0,
         )
+
+    def get_instant_analytics(self):
+        """Broadcast a LoRa INSTANT_ANALYTICS command repeatedly so sleeping
+        ESP32 devices catch it during their listen window.
+        Runs in a separate thread to avoid blocking the MQTT callback.
+        """
+        import threading
+
+        def _burst():
+            from models.messages import LoRaMessage, MessageType
+            from datetime import datetime
+            import time
+
+            BURST_INTERVAL = 0.5   # 500ms between sends
+            BURST_DURATION = 18.0  # must cover full ESP32 sleep interval (default 15s) + margin
+
+            raw = LoRaMessage(
+                message_type=MessageType.COMMAND,
+                timestamp=datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ"),
+                uid=self.child_repo.get_parent_id(),
+                data="IA",
+            ).to_lora_format()
+
+            end = time.time() + BURST_DURATION
+            count = 0
+            while time.time() < end:
+                self.lora_comm.send(raw)
+                count += 1
+                time.sleep(BURST_INTERVAL)
+
+            print(f"[GatewayCore] Instant analytics burst done ({count} sends over {BURST_DURATION}s)")
+
+        threading.Thread(target=_burst, daemon=True).start()
+        print("[GatewayCore] Instant analytics burst started")
 
     # ------------------------------------------------------------------
     # Lifecycle
@@ -227,7 +261,7 @@ class GatewayCore:
         """Check MQTT connection health and reconnect if needed."""
         try:
             if not self.mqtt_comm.is_connected():
-                print("[GatewayCore] MQTT connection lost — reconnecting...")
+                print("[GatewayCore] MQTT connection lost - reconnecting...")
                 self.mqtt_comm.reconnect()
         except Exception as e:
             print(f"[GatewayCore] MQTT error: {e}")

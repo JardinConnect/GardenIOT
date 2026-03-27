@@ -105,6 +105,23 @@ class LoRaProtocol(CommunicationProtocol):
             if msg:
                 return msg
 
+        # Check if a packet arrived while the CPU was in lightsleep.
+        # The radio keeps running during lightsleep and sets the RxDone IRQ flag,
+        # but the GPIO interrupt can't fire while the CPU is halted.
+        # We must read the FIFO BEFORE clearing IRQ flags.
+        irq_pre = self._lora._read(0x12)
+        if irq_pre & 0x40:  # RxDone - packet received during lightsleep
+            self._lora._write(0x01, 0x81)  # Standby to safely read FIFO
+            self._lora._write(0x12, 0xFF)  # Clear IRQ
+            try:
+                raw_payload = self._lora._read_payload()
+                msg = self._process_raw_payload(raw_payload)
+                if msg:
+                    self._lora.recv()  # Back to RX
+                    return msg
+            except Exception as e:
+                log(f"Pre-check receive error: {e}")
+
         # Initialiser le mode réception
         self._lora._write(0x01, 0x81)  # Standby
         self._lora._write(0x12, 0xFF)  # Clear IRQ
@@ -256,7 +273,7 @@ class LoRaProtocol(CommunicationProtocol):
             if msg_type == 'D':
                 data_str = ";".join([f"{k}{v}" for k, v in data.items()])
             elif msg_type == 'S':
-                # Explicit order: status;count — dict.values() order is not guaranteed in MicroPython
+                # Explicit order: status;count - dict.values() order is not guaranteed in MicroPython
                 data_str = "{};{}".format(data.get('status', 'O'), data.get('count', 0))
             elif msg_type == 'T':
                 data_str = "{};{};{};{}".format(data.get('alert_id', 'O'), data.get('level', 'C'), data.get('identifier', ''), data.get('value', 0))

@@ -107,7 +107,9 @@
 
   "power": {
     "sleep_interval": 15,
-    "reset_duration_ms": 10000
+    "reset_duration_ms": 10000,
+    "micro_sleep_ms": 1000,
+    "listen_timeout_ms": 100
   },
 
   "alert": {

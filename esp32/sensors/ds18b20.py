@@ -21,7 +21,7 @@ class DS18B20Sensor:
         self.roms = self.ds.scan()
         
         if not self.roms:
-            print(" Aucun capteur détecté — vérifie ton câblage et la résistance pull-up.")
+            print(" Aucun capteur détecté - vérifie ton câblage et la résistance pull-up.")
     
     def get_device_count(self):
         """Retourne le nombre de capteurs DS18B20 détectés"""

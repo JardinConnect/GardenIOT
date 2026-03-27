@@ -79,7 +79,7 @@ class PairingState(State):
         now = time.time()
         
         if now > self.end_time:
-            print("[PairingState] Timeout — aucun device pairé")
+            print("[PairingState] Timeout - aucun device pairé")
             self.gateway.set_state(SystemState.NORMAL)
             return
         

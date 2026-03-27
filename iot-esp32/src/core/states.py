@@ -169,23 +169,41 @@ class ActiveState(DeviceState):
 class SleepState(DeviceState):
     """
     Sleep state: conserve power between reading cycles.
+    Uses micro-sleep + listen window so the gateway can wake the device via LoRa.
     """
     
     name = "SLEEP"
     
+    def exit(self, context):
+        # lightsleep wakeup can trigger spurious button IRQs - discard them
+        context._pairing_requested = False
+
     def handle(self, context):
         interval = context.config.get('power.sleep_interval', 15)
+        micro_sleep_ms = context.config.get('power.micro_sleep_ms', 1000)
+        listen_timeout_ms = context.config.get('power.listen_timeout_ms', 100)
+        cycles = (interval * 1000) // micro_sleep_ms
         
-        print(f"[SleepState] Sleeping {interval}s...")
+        print(f"[SleepState] Sleeping {interval}s ({cycles} cycles with listen window)")
         
-        try:
+        for _ in range(cycles):
+            # 1. Micro-sleep
             try:
                 from machine import lightsleep
-                lightsleep(interval * 1000)
+                lightsleep(micro_sleep_ms)
             except ImportError:
-                time.sleep(interval)
-        except Exception as e:
-            print(f"[SleepState] Sleep interrupted: {e}")
+                time.sleep_ms(micro_sleep_ms)
+            
+            # 2. Écoute LoRa rapide - wake sur n'importe quel message entrant
+            try:
+                msg = context.communication.receive(timeout_ms=listen_timeout_ms)
+                if msg:
+                    print(f"[SleepState] LoRa message received (type={msg.get('type')}), waking up")
+                    context._wake_message = msg
+                    context.set_state(ActiveState())
+                    return
+            except Exception:
+                pass
         
         context.set_state(ActiveState())
 

@@ -27,14 +27,14 @@ Ce document décrit les design patterns mis en place dans le projet IoT embarqu�
 
 ### Pourquoi utiliser des design patterns en IoT ?
 
-| Problème | Solution apportée |
-|----------|-------------------|
-| Code spaghetti difficile à maintenir | Architecture structurée et modulaire |
-| Ajout de nouveaux capteurs complexe | Factory Pattern → ajout en une ligne |
-| Changement de protocole de communication | Strategy Pattern → interchangeable |
-| Gestion des alertes couplée aux capteurs | Observer Pattern → découplage total |
-| Ressources partagées (config, pins) | Singleton Pattern → instance unique |
-| États du device mal gérés | State Pattern → transitions claires |
+| Problème                                 | Solution apportée                    |
+| ---------------------------------------- | ------------------------------------ |
+| Code spaghetti difficile à maintenir     | Architecture structurée et modulaire |
+| Ajout de nouveaux capteurs complexe      | Factory Pattern → ajout en une ligne |
+| Changement de protocole de communication | Strategy Pattern → interchangeable   |
+| Gestion des alertes couplée aux capteurs | Observer Pattern → découplage total  |
+| Ressources partagées (config, pins)      | Singleton Pattern → instance unique  |
+| États du device mal gérés                | State Pattern → transitions claires  |
 
 ---
 
@@ -72,11 +72,13 @@ Ce document décrit les design patterns mis en place dans le projet IoT embarqu�
 ### 🎯 Pourquoi ?
 
 En IoT embarqué, certaines ressources **ne doivent exister qu'en une seule instance** :
+
 - La **configuration** du device (pins, paramètres, seuils)
 - Le **gestionnaire principal** du device
 - La **connexion série** ou réseau
 
 Sans Singleton, on risque :
+
 - Des conflits d'accès aux ressources matérielles (pins, bus I2C/SPI)
 - Une consommation mémoire excessive (duplication de données)
 - Des incohérences de configuration
@@ -150,13 +152,13 @@ interval = config.get('read_interval', default=60)
 lora_freq = config.get('lora', 'frequency', default=868.0)
 ```
 
-###  Où l'appliquer dans le projet
+### Où l'appliquer dans le projet
 
-| Classe | Raison |
-|--------|--------|
+| Classe          | Raison                            |
+| --------------- | --------------------------------- |
 | `ConfigManager` | Une seule source de configuration |
-| `DeviceManager` | Un seul orchestrateur |
-| `PowerManager` | Un seul gestionnaire d'énergie |
+| `DeviceManager` | Un seul orchestrateur             |
+| `PowerManager`  | Un seul gestionnaire d'énergie    |
 
 ---
 
@@ -299,7 +301,7 @@ dht = SensorFactory.create("dht22", name="temp_ext", pin=4)
 }
 ```
 
-###  Avantages concrets
+### Avantages concrets
 
 - **Ajouter un capteur** = créer une classe + une ligne `register()`
 - **Configuration dynamique** depuis un fichier JSON
@@ -312,6 +314,7 @@ dht = SensorFactory.create("dht22", name="temp_ext", pin=4)
 ### 🎯 Pourquoi ?
 
 Un device IoT peut communiquer via **plusieurs protocoles** :
+
 - **LoRa** pour les longues distances sans WiFi
 - **WiFi/HTTP** pour les communications locales
 - **MQTT** pour le temps réel
@@ -520,7 +523,7 @@ comm.send(sensor_data)
 comm.set_strategy(wifi)
 ```
 
-###  Avantages concrets
+### Avantages concrets
 
 - **Changement de protocole** sans modifier le code métier
 - **Fallback automatique** si un protocole échoue
@@ -533,6 +536,7 @@ comm.set_strategy(wifi)
 ### 🎯 Pourquoi ?
 
 Dans un système IoT, **plusieurs modules** doivent réagir aux données des capteurs :
+
 - **AlertManager** → déclencher une alerte si un seuil est dépassé
 - **Logger** → enregistrer les données
 - **Display** → mettre à jour un écran
@@ -669,7 +673,7 @@ event_bus.publish("sensor.data", {
 # → AlertManager ET Logger sont notifiés automatiquement
 ```
 
-###  Avantages concrets
+### Avantages concrets
 
 - **Découplage total** entre capteurs et modules de traitement
 - **Ajout d'un observer** sans modifier les capteurs
@@ -876,7 +880,7 @@ class DeviceManager:
             self._state.handle(self)
 ```
 
-###  Avantages concrets
+### Avantages concrets
 
 - **Chaque état est isolé** dans sa propre classe
 - **Transitions explicites** et faciles à suivre
@@ -890,6 +894,7 @@ class DeviceManager:
 ### 🎯 Pourquoi ?
 
 Tous les capteurs suivent le **même processus** de lecture :
+
 1. Vérifier que le capteur est prêt
 2. Lire les données brutes
 3. Valider les données
@@ -1066,7 +1071,7 @@ class BMP280Sensor(BaseSensor):
         )
 ```
 
-###  Avantages concrets
+### Avantages concrets
 
 - **Pas de duplication** de la logique de cache, validation, formatage
 - **Nouveau capteur** = implémenter seulement `_read_raw()` et `_validate()`
@@ -1250,7 +1255,7 @@ class LM393Sensor(BaseSensor):
         )
 ```
 
-###  Avantages concrets
+### Avantages concrets
 
 - **Uniformité** : toutes les libs tierces exposent la même interface
 - **Remplacement facile** : changer de lib sans toucher au code métier
@@ -1263,6 +1268,7 @@ class LM393Sensor(BaseSensor):
 ### 🎯 Pourquoi ?
 
 En IoT, les communications **échouent régulièrement** :
+
 - Signal LoRa faible
 - WiFi instable
 - Capteur déconnecté temporairement
@@ -1438,7 +1444,7 @@ def send_with_protection(data):
     return result
 ```
 
-###  Avantages concrets
+### Avantages concrets
 
 - **Résilience** : le système survit aux pannes temporaires
 - **Backoff exponentiel** : évite de surcharger le réseau
@@ -1452,6 +1458,7 @@ def send_with_protection(data):
 ### 🎯 Pourquoi ?
 
 Les données circulent entre **plusieurs couches** du système :
+
 - Capteur → SensorManager → EventBus → AlertManager → Communication
 
 Sans format standardisé, chaque module interprète les données différemment → **bugs et incohérences**.
@@ -1583,7 +1590,7 @@ payload = dto.to_dict()
 # → {'sensor': 'dht22', 'type': 'DHT22', 'timestamp': ..., 'readings': [...]}
 ```
 
-###  Avantages concrets
+### Avantages concrets
 
 - **Format unique** dans tout le système
 - **Double sérialisation** : compact (LoRa) ou complet (WiFi)
@@ -1758,7 +1765,7 @@ class DeviceManager:
 ```
 
 ```python
-# main.py — Simple grâce à la Façade
+# main.py - Simple grâce à la Façade
 
 from core.device_manager import DeviceManager
 
@@ -1771,7 +1778,7 @@ if __name__ == '__main__':
     main()
 ```
 
-###  Avantages concrets
+### Avantages concrets
 
 - **main.py** fait **3 lignes** de code
 - **Aucune connaissance** des sous-systèmes requise
@@ -1782,18 +1789,18 @@ if __name__ == '__main__':
 
 ## Résumé des patterns et leur localisation
 
-| # | Pattern | Fichier | Rôle |
-|---|---------|---------|------|
-| 1 | **Singleton** | `config/config_manager.py`, `core/device_manager.py` | Instance unique des ressources partagées |
-| 2 | **Factory** | `sensors/sensor_factory.py` | Création dynamique de capteurs |
-| 3 | **Strategy** | `communication/base_protocol.py` | Protocoles interchangeables |
-| 4 | **Observer** | `managers/event_bus.py` | Notifications découplées |
-| 5 | **State** | `core/states.py` | Gestion des états du device |
-| 6 | **Template Method** | `sensors/base_sensor.py` | Algorithme de lecture standardisé |
-| 7 | **Adapter** | `sensors/*_sensor.py` | Uniformisation des libs tierces |
-| 8 | **Retry / Circuit Breaker** | `utils/retry.py` | Résilience aux pannes |
-| 9 | **DTO** | `models/sensor_data.py` | Format de données standardisé |
-| 10 | **Façade** | `core/device_manager.py` | Interface simplifiée |
+| #   | Pattern                     | Fichier                                              | Rôle                                     |
+| --- | --------------------------- | ---------------------------------------------------- | ---------------------------------------- |
+| 1   | **Singleton**               | `config/config_manager.py`, `core/device_manager.py` | Instance unique des ressources partagées |
+| 2   | **Factory**                 | `sensors/sensor_factory.py`                          | Création dynamique de capteurs           |
+| 3   | **Strategy**                | `communication/base_protocol.py`                     | Protocoles interchangeables              |
+| 4   | **Observer**                | `managers/event_bus.py`                              | Notifications découplées                 |
+| 5   | **State**                   | `core/states.py`                                     | Gestion des états du device              |
+| 6   | **Template Method**         | `sensors/base_sensor.py`                             | Algorithme de lecture standardisé        |
+| 7   | **Adapter**                 | `sensors/*_sensor.py`                                | Uniformisation des libs tierces          |
+| 8   | **Retry / Circuit Breaker** | `utils/retry.py`                                     | Résilience aux pannes                    |
+| 9   | **DTO**                     | `models/sensor_data.py`                              | Format de données standardisé            |
+| 10  | **Façade**                  | `core/device_manager.py`                             | Interface simplifiée                     |
 
 ---
 
@@ -1895,55 +1902,55 @@ project_root/
 
 ### 🔋 Gestion de l'énergie
 
-| Pratique | Description |
-|----------|-------------|
-| **Deep Sleep** | Mettre le microcontrôleur en veille entre les lectures |
-| **Duty Cycling** | Alterner périodes actives et inactives |
+| Pratique                   | Description                                                          |
+| -------------------------- | -------------------------------------------------------------------- |
+| **Deep Sleep**             | Mettre le microcontrôleur en veille entre les lectures               |
+| **Duty Cycling**           | Alterner périodes actives et inactives                               |
 | **Lecture conditionnelle** | Ne lire que si le délai minimum est écoulé (cache dans `BaseSensor`) |
 
 ### 🛡️ Fiabilité
 
-| Pratique | Description |
-|----------|-------------|
-| **Watchdog Timer** | Redémarrage automatique si le code est bloqué |
-| **Retry Logic** | Réessayer N fois avant d'abandonner (dans `ErrorState`) |
-| **Fallback Communication** | Si LoRa échoue → WiFi (dans `CommunicationManager`) |
-| **Error Counter** | Désactiver un capteur défaillant (`_max_errors` dans `BaseSensor`) |
+| Pratique                   | Description                                                        |
+| -------------------------- | ------------------------------------------------------------------ |
+| **Watchdog Timer**         | Redémarrage automatique si le code est bloqué                      |
+| **Retry Logic**            | Réessayer N fois avant d'abandonner (dans `ErrorState`)            |
+| **Fallback Communication** | Si LoRa échoue → WiFi (dans `CommunicationManager`)                |
+| **Error Counter**          | Désactiver un capteur défaillant (`_max_errors` dans `BaseSensor`) |
 
 ### 💾 Mémoire
 
-| Pratique | Description |
-|----------|-------------|
-| **gc.collect()** | Forcer le garbage collector régulièrement |
-| **Éviter les strings** | Utiliser des constantes numériques pour les événements |
-| **Streaming JSON** | Encoder les données au fil de l'eau plutôt qu'en mémoire |
+| Pratique               | Description                                              |
+| ---------------------- | -------------------------------------------------------- |
+| **gc.collect()**       | Forcer le garbage collector régulièrement                |
+| **Éviter les strings** | Utiliser des constantes numériques pour les événements   |
+| **Streaming JSON**     | Encoder les données au fil de l'eau plutôt qu'en mémoire |
 
 ### 🔐 Sécurité
 
-| Pratique | Description |
-|----------|-------------|
-| **Config externe** | Ne pas hardcoder les mots de passe dans le code |
+| Pratique                   | Description                                           |
+| -------------------------- | ----------------------------------------------------- |
+| **Config externe**         | Ne pas hardcoder les mots de passe dans le code       |
 | **Validation des entrées** | Toujours valider les données capteurs (`_validate()`) |
-| **Chiffrement LoRa** | Utiliser AES pour les transmissions sensibles |
+| **Chiffrement LoRa**       | Utiliser AES pour les transmissions sensibles         |
 
 ---
 
 ## Glossaire
 
-| Terme | Définition |
-|-------|------------|
-| **Singleton** | Pattern qui garantit une instance unique d'une classe |
-| **Factory** | Pattern qui centralise la création d'objets |
-| **Strategy** | Pattern qui permet de changer d'algorithme à chaud |
-| **Observer** | Pattern qui notifie automatiquement les modules intéressés |
-| **State** | Pattern qui encapsule le comportement selon l'état |
-| **Template Method** | Pattern qui définit le squelette d'un algorithme |
-| **Adapter** | Pattern qui uniformise des interfaces différentes |
-| **Retry** | Mécanisme de réessai automatique après un échec |
-| **Circuit Breaker** | Mécanisme qui coupe les appels vers un service défaillant |
-| **DTO** | Objet de transfert de données entre les couches du système |
-| **Façade** | Pattern qui simplifie l'interface d'un sous-système complexe |
-| **Deep Sleep** | Mode de veille profonde du microcontrôleur |
-| **I2C** | Protocole de communication série pour les capteurs |
-| **LoRa** | Protocole radio longue portée, basse consommation |
-| **MQTT** | Protocole de messagerie léger pour l'IoT |
+| Terme               | Définition                                                   |
+| ------------------- | ------------------------------------------------------------ |
+| **Singleton**       | Pattern qui garantit une instance unique d'une classe        |
+| **Factory**         | Pattern qui centralise la création d'objets                  |
+| **Strategy**        | Pattern qui permet de changer d'algorithme à chaud           |
+| **Observer**        | Pattern qui notifie automatiquement les modules intéressés   |
+| **State**           | Pattern qui encapsule le comportement selon l'état           |
+| **Template Method** | Pattern qui définit le squelette d'un algorithme             |
+| **Adapter**         | Pattern qui uniformise des interfaces différentes            |
+| **Retry**           | Mécanisme de réessai automatique après un échec              |
+| **Circuit Breaker** | Mécanisme qui coupe les appels vers un service défaillant    |
+| **DTO**             | Objet de transfert de données entre les couches du système   |
+| **Façade**          | Pattern qui simplifie l'interface d'un sous-système complexe |
+| **Deep Sleep**      | Mode de veille profonde du microcontrôleur                   |
+| **I2C**             | Protocole de communication série pour les capteurs           |
+| **LoRa**            | Protocole radio longue portée, basse consommation            |
+| **MQTT**            | Protocole de messagerie léger pour l'IoT                     |

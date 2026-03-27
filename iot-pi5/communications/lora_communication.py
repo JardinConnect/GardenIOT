@@ -203,7 +203,7 @@ class LoRaCommunication:
           state:  'S' (device peut dormir) ou 'L' (gateway a des messages à envoyer)
 
         Args:
-            target_uid: UID du device cible (ESP32) — utilisé pour le log
+            target_uid: UID du device cible (ESP32) - utilisé pour le log
             status: 'OK' ou 'KO'
             state:  'S' ou 'L'
         """

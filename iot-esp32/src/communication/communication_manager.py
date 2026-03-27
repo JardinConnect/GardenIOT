@@ -19,6 +19,7 @@ class CommunicationManager:
         self._message_queue = []
         self._config = config
         self.last_send_time = None
+        self._force_send = False
         self._waiting_for_ack = False
         self._send_attempts = 0
         self._data_count = 0
@@ -343,13 +344,23 @@ class CommunicationManager:
     #==================================================
 
     def _check_my_uid(self, uid):
-        """Vérifie si l'UID correspond au notre."""
+        """Vérifie si l'UID correspond au notre ou à notre parent (gateway)."""
+        if not uid:
+            return False
         if self._device_uid and uid == self._device_uid:
+            return True
+        parent_id = self._config.get('device.parent_id') if self._config else None
+        if parent_id and uid == parent_id:
             return True
         return False
 
     def _check_send_conditions(self, timestamp):
         """Check if we should send queued messages based on configuration."""
+        if self._force_send:
+            print("[CommunicationManager] Force send active - bypassing interval check")
+            self._force_send = False
+            return True
+
         if not self._config:
             return
         

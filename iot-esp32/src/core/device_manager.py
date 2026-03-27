@@ -9,7 +9,7 @@ from core.sensor_manager import SensorManager
 from communication.communication_manager import CommunicationManager
 from core.event_bus import EventBus
 from core.state_manager import StateManager
-from core.states import BootState, PairingState
+from core.states import BootState, PairingState, ActiveState
 from alert.alert_manager import AlertManager
 from communication.lora_protocol import LoRaProtocol
 from machine import Pin
@@ -44,6 +44,7 @@ class DeviceManager:
         self.protocol = None
         
         self._running = False
+        self._wake_message = None
         
         print(f"[DeviceManager] Initialized for device: {self.uid}")
     
@@ -80,12 +81,6 @@ class DeviceManager:
         
         gc.collect()
         print(f"[DeviceManager] All components initialized")
-
-    def set_state(self, new_state):
-        if self.state_manager:
-            self.state_manager.set_state(new_state)
-        else:
-            print("[DeviceManager] StateManager not initialized")
     
     def _validate_sensor_configurations(self):
         sensors = self.config.get('sensors', [])
@@ -143,6 +138,13 @@ class DeviceManager:
             rtc=self._rtc,
             config=self.config
         )
+
+    def set_state(self, new_state):
+        if self.state_manager:
+            self.state_manager.set_state(new_state)
+        else:
+            print("[DeviceManager] StateManager not initialized")
+    
     
     def run(self):
         print("="*60)
@@ -160,6 +162,13 @@ class DeviceManager:
                     if not isinstance(self.state_manager.current_state, PairingState):
                         print("[DeviceManager] Button pressed - switching to pairing")
                         self.state_manager.set_state(PairingState())
+
+                # Dispatch wake message saved by SleepState through normal event bus
+                if self._wake_message:
+                    msg = self._wake_message
+                    self._wake_message = None
+                    print(f"[DeviceManager] Dispatching wake message: type={msg.get('type')}")
+                    self.communication._handle_incoming(msg)
 
                 self.state_manager.handle()
             except KeyboardInterrupt:
@@ -203,6 +212,8 @@ class DeviceManager:
         else:
             print("[DeviceManager.run_cycle] No valid sensor data to publish")
 
+        # 4. Go back to listening
+        self.communication.receive(timeout_ms=1)
         print("[DeviceManager.run_cycle] EXIT - Cycle completed")
 
     def _get_timestamp(self):
@@ -236,14 +247,21 @@ class DeviceManager:
         print(f"[DeviceManager] Status message received: {message}")
 
     def _handle_command_message(self, message):
-        command = message.get('command', '')
+        command = message.get('data', '')
         params = message.get('params', {})
         print(f"[DeviceManager] Command: {command} params: {params}")
         
         if command == 'REBOOT':
             self._reboot_device()
+        elif command == 'IA':
+            print("[DeviceManager] Instant analytics requested - forcing send")
+            self.communication._force_send = True
+            if not isinstance(self.state_manager.current_state, ActiveState):
+                self.state_manager.set_state(ActiveState())
         elif command == 'RESET_CONFIG':
             self._reset_configuration()
+        else:
+            print(f"[DeviceManager] Unknown command: {command}")
     
     def _reboot_device(self):
         print("[DeviceManager] Rebooting...")

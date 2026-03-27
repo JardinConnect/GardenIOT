@@ -9,7 +9,7 @@ from models.messages import LoRaMessage, MqttMessage, MessageType, SensorData, A
 class MessageRouter:
     """
     Parses LoRa frames and dispatches them as domain events on the EventBus.
-    Does NOT call other components directly — only publishes events.
+    Does NOT call other components directly - only publishes events.
 
     Responsibilities:
     - Parse raw LoRa strings into LoRaMessage objects
@@ -28,7 +28,7 @@ class MessageRouter:
 
     def __init__(self, gateway_core):
         self.gateway = gateway_core
-        self._receive_sessions = {}  # {uid: received_count} — reset after STATUS
+        self._receive_sessions = {}  # {uid: received_count} - reset after STATUS
 
     # ------------------------------------------------------------------
     # Public entry points (called by GatewayCore threads)
@@ -69,8 +69,8 @@ class MessageRouter:
 
             if "alerts/config" in topic:
                 self._handle_mqtt_alert_config(mqtt_message.payload)
-            elif "pairing/unpair" in topic:
-                self._handle_mqtt_unpair(mqtt_message.payload)
+            # elif "pairing/unpair" in topic:
+            #     self._handle_mqtt_unpair(mqtt_message.payload)
             elif "pairing/request" in topic:
                 self._handle_mqtt_pairing_request(mqtt_message.payload)
             elif "devices/command" in topic:
@@ -82,14 +82,14 @@ class MessageRouter:
             print(f"[MessageRouter] Error routing MQTT message: {e}")
 
     # ------------------------------------------------------------------
-    # Inbound LoRa handlers — publish events only, no direct calls
+    # Inbound LoRa handlers - publish events only, no direct calls
     # ------------------------------------------------------------------
 
     def _handle_lora_data(self, message: LoRaMessage):
         """Publish device.data.received. Session count is handled centrally in route_from_lora."""
         uid = message.uid
         if not self.gateway.child_repo.is_child_authorized(uid):
-            print(f"[MessageRouter] DATA ignored — unauthorized device: {uid}")
+            print(f"[MessageRouter] DATA ignored - unauthorized device: {uid}")
             return
 
         sensor_data = SensorData.from_lora_data(message.data)
@@ -106,7 +106,7 @@ class MessageRouter:
         """
         uid = message.uid
         if not self.gateway.child_repo.is_child_authorized(uid):
-            print(f"[MessageRouter] STATUS ignored — unauthorized device: {uid}")
+            print(f"[MessageRouter] STATUS ignored - unauthorized device: {uid}")
             self._receive_sessions.pop(uid, None)
             return
 
@@ -145,7 +145,7 @@ class MessageRouter:
         })
 
     def _handle_lora_pa_ack(self, message: LoRaMessage):
-        """ESP32 confirms pairing — publish device.pairing.ack."""
+        """ESP32 confirms pairing - publish device.pairing.ack."""
         print(f"[MessageRouter] Pairing ACK from {message.uid}")
         ack_ok = message.data.startswith('OK') if message.data else False
 
@@ -156,7 +156,7 @@ class MessageRouter:
         })
 
     def _handle_lora_pairing(self, message: LoRaMessage):
-        """Publish device.pairing.request — GatewayCore decides whether to accept."""
+        """Publish device.pairing.request - GatewayCore decides whether to accept."""
         print(f"[MessageRouter] Pairing request from {message.uid}")
         self.gateway.event_bus.publish("device.pairing.request", {
             "uid": message.uid,
@@ -164,13 +164,13 @@ class MessageRouter:
             "data": message.data,
         })
 
-    def _handle_lora_unpair(self, message: LoRaMessage):
-        """Publish device.unpaired — GatewayCore removes device and notifies MQTT."""
-        print(f"[MessageRouter] Unpair request from {message.uid}")
-        self.gateway.event_bus.publish("device.unpaired", {"uid": message.uid})
+    # def _handle_lora_unpair(self, message: LoRaMessage):
+    #     """Publish device.unpaired - GatewayCore removes device and notifies MQTT."""
+    #     print(f"[MessageRouter] Unpair request from {message.uid}")
+    #     self.gateway.event_bus.publish("device.unpaired", {"uid": message.uid})
 
     def _handle_lora_alert_config(self, message: LoRaMessage):
-        """Publish device.alert.config.ack — GatewayCore forwards to MQTT."""
+        """Publish device.alert.config.ack - GatewayCore forwards to MQTT."""
         print(f"[MessageRouter] Alert config ACK from {message.uid}")
         self.gateway.event_bus.publish("device.alert.config.ack", {
             "uid": message.uid,
@@ -191,7 +191,7 @@ class MessageRouter:
         print(f"[MessageRouter] Unknown LoRa type: {message.message_type.value} from {message.uid}")
 
     # ------------------------------------------------------------------
-    # Inbound MQTT handlers — outbound path, direct calls are acceptable
+    # Inbound MQTT handlers - outbound path, direct calls are acceptable
     # ------------------------------------------------------------------
 
     def _handle_mqtt_alert_config(self, payload: dict):
@@ -218,18 +218,18 @@ class MessageRouter:
             self.gateway.message_queue.queue_message(cell_uid, lora_message.to_lora_format())
             print(f"[MessageRouter] Alert {alert_id} queued for {cell_uid}")
 
-    def _handle_mqtt_unpair(self, payload: dict):
-        """Send unpair command via LoRa and remove device from repo."""
-        uid = payload.get("uid", "")
-        print(f"[MessageRouter] Unpair command for {uid}")
-        lora_message = LoRaMessage(
-            message_type=MessageType.UNPAIR,
-            timestamp=self._get_current_timestamp(),
-            uid=uid,
-            data="",
-        )
-        self.gateway.lora_comm.send(lora_message.to_lora_format())
-        self.gateway.child_repo.remove_child(uid)
+    # def _handle_mqtt_unpair(self, payload: dict):
+    #     """Send unpair command via LoRa and remove device from repo."""
+    #     uid = payload.get("uid", "")
+    #     print(f"[MessageRouter] Unpair command for {uid}")
+    #     lora_message = LoRaMessage(
+    #         message_type=MessageType.UNPAIR,
+    #         timestamp=self._get_current_timestamp(),
+    #         uid=uid,
+    #         data="",
+    #     )
+    #     self.gateway.lora_comm.send(lora_message.to_lora_format())
+    #     self.gateway.child_repo.remove_child(uid)
 
     def _handle_mqtt_pairing_request(self, payload: dict):
         """Start or stop pairing mode from MQTT."""
@@ -243,9 +243,18 @@ class MessageRouter:
             self.gateway.set_state(SystemState.NORMAL)
 
     def _handle_mqtt_device_command(self, payload: dict):
-        """Handle system commands from MQTT."""
+        """Handle system commands from MQTT.
+        Payload: {"command": "<type>", ...}
+        Supported commands:
+            - instant_analytics: trigger immediate analytics processing
+            - reboot: reboot the gateway
+            - factory_reset: reset configuration to defaults
+        """
         command = payload.get("command")
-        if command == "reboot":
+        if command == "instant_analytics":
+            print("[MessageRouter] Instant analytics command received")
+            self.gateway.get_instant_analytics()
+        elif command == "reboot":
             print("[MessageRouter] Reboot command received")
             self.gateway.reboot()
         elif command == "factory_reset":

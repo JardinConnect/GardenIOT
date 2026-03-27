@@ -85,11 +85,11 @@ class MessageQueue:
         with self.lock:
             failed = self._in_flight.pop(uid, [])
             if success:
-                print(f"[MessageQueue] ACK OK from {uid} — {len(failed)} message(s) confirmed")
+                print(f"[MessageQueue] ACK OK from {uid} - {len(failed)} message(s) confirmed")
             elif failed:
                 existing = self.pending_messages.get(uid, [])
                 self.pending_messages[uid] = failed + existing
-                print(f"[MessageQueue] ACK KO from {uid} — {len(failed)} message(s) re-queued")
+                print(f"[MessageQueue] ACK KO from {uid} - {len(failed)} message(s) re-queued")
 
     # ------------------------------------------------------------------
     # Internal helpers
