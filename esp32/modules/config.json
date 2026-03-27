@@ -1,0 +1,9 @@
+{
+    "type": "max17043",
+    "name": "battery",
+    "enabled": true,
+    "bus": "i2c",
+    "index": 1,
+    "codes": { "voltage": "VB", "soc": "SB" },
+    "alerts": {}
+}
