@@ -258,6 +258,8 @@ class DeviceManager:
             self.communication._force_send = True
             if not isinstance(self.state_manager.current_state, ActiveState):
                 self.state_manager.set_state(ActiveState())
+        elif command.startswith('SET:'):
+            self._apply_settings(command[4:])
         elif command == 'RESET_CONFIG':
             self._reset_configuration()
         else:
@@ -270,7 +272,41 @@ class DeviceManager:
             machine.reset()
         except ImportError:
             print("[DeviceManager] machine.reset() not available")
-    
+
+    def _apply_settings(self, raw):
+        """Parse and apply settings from a SET command.
+        raw format: key=val;key=val  (e.g. send_interval=30;sleep_interval=10)
+        """
+        SETTINGS_MAP = {
+            'send_interval': 'device.send_interval',
+            'sleep_interval': 'power.sleep_interval',
+        }
+
+        applied = []
+        for pair in raw.split(';'):
+            if '=' not in pair:
+                continue
+            key, val = pair.split('=', 1)
+            config_path = SETTINGS_MAP.get(key)
+            if not config_path:
+                print(f"[DeviceManager] Unknown setting: {key}")
+                continue
+            try:
+                val = int(val)
+            except ValueError:
+                try:
+                    val = float(val)
+                except ValueError:
+                    pass
+            self.config.set(config_path, val)
+            applied.append(f"{config_path}={val}")
+
+        if applied:
+            self.config.save()
+            print(f"[DeviceManager] Settings applied: {', '.join(applied)}")
+        else:
+            print("[DeviceManager] No valid settings to apply")
+
     def _reset_configuration(self):
         print("[DeviceManager] Resetting configuration...")
     

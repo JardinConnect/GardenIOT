@@ -156,7 +156,8 @@ class MqttCommunication:
             ("garden/alerts/config", 1),
             ("garden/pairing/request", 0),
             ("garden/pairing/unpair", 0),
-            ("garden/devices/command", 0)
+            ("garden/devices/command", 0),
+            ("garden/devices/settings", 0)
         ]
         
         for topic, qos in topics:

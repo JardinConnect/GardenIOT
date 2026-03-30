@@ -36,11 +36,13 @@ class SensorManager:
         from sensors.ds18b20 import DS18B20Sensor
         from sensors.bh1750_sensor import BH1750Sensor
         from sensors.lm393_sensor import LM393Sensor
+        from sensors.max17043_sensor import MAX17043Sensor
         
         SensorFactory.register("dht22", DHT22Sensor)
         SensorFactory.register("ds18b20", DS18B20Sensor)
         SensorFactory.register("bh1750", BH1750Sensor)
         SensorFactory.register("lm393", LM393Sensor)
+        SensorFactory.register("max17043", MAX17043Sensor)
         
         print("[SensorManager] Sensor types registered")
     

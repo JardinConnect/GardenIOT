@@ -75,6 +75,8 @@ class MessageRouter:
                 self._handle_mqtt_pairing_request(mqtt_message.payload)
             elif "devices/command" in topic:
                 self._handle_mqtt_device_command(mqtt_message.payload)
+            elif "devices/settings" in topic:
+                self._handle_mqtt_device_settings(mqtt_message.payload)
             else:
                 print(f"[MessageRouter] Unhandled MQTT topic: {topic}")
 
@@ -262,6 +264,23 @@ class MessageRouter:
             self.gateway.factory_reset()
         else:
             print(f"[MessageRouter] Unknown command: {command}")
+
+    def _handle_mqtt_device_settings(self, payload: dict):
+        """Handle device settings update from MQTT.
+        Payload: {"uid": "<child_uid>", "send_interval": <int>, "sleep_interval": <int>}
+        - uid: optional, target a specific device. If omitted, sends to all children.
+        Only known setting keys are forwarded. At least one valid key is required.
+        """
+        ALLOWED_KEYS = {"send_interval", "sleep_interval"}
+        target_uid = payload.get("uid")
+        settings = {k: v for k, v in payload.items() if k in ALLOWED_KEYS}
+
+        if not settings:
+            print(f"[MessageRouter] No valid settings in payload: {payload}")
+            return
+
+        print(f"[MessageRouter] Device settings update: {settings} -> {target_uid or 'all'}")
+        self.gateway.update_device_settings(settings, target_uid=target_uid)
 
     # ------------------------------------------------------------------
     # Helpers

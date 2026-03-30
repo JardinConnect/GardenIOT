@@ -167,38 +167,55 @@ class GatewayCore:
         )
 
     def get_instant_analytics(self):
-        """Broadcast a LoRa INSTANT_ANALYTICS command repeatedly so sleeping
-        ESP32 devices catch it during their listen window.
-        Runs in a separate thread to avoid blocking the MQTT callback.
+        """Broadcast IA command to all children using parent_id."""
+        self._lora_command_burst("IA")
+
+    def update_device_settings(self, settings: dict, target_uid: str = None):
+        """Send SET command to a specific child or all children."""
+        data_str = "SET:" + ";".join(f"{k}={v}" for k, v in settings.items())
+        if target_uid:
+            self._lora_command_burst(data_str, target_uid=target_uid)
+        else:
+            children = self.child_repo.get_all_children()
+            for c in children:
+                uid = c["id"] if isinstance(c, dict) else c
+                self._lora_command_burst(data_str, target_uid=uid)
+
+    def _lora_command_burst(self, data: str, target_uid: str = None):
+        """Send a LoRa COMMAND burst in a daemon thread.
+        - target_uid provided: sends with that specific child UID (targeted)
+        - target_uid is None:  sends with parent_id (broadcast to all)
         """
         import threading
+
+        uid = target_uid if target_uid else self.child_repo.get_parent_id()
 
         def _burst():
             from models.messages import LoRaMessage, MessageType
             from datetime import datetime
             import time
 
-            BURST_INTERVAL = 0.5   # 500ms between sends
-            BURST_DURATION = 18.0  # must cover full ESP32 sleep interval (default 15s) + margin
+            BURST_INTERVAL = 0.5
+            BURST_DURATION = 18.0
 
-            raw = LoRaMessage(
+            frame = LoRaMessage(
                 message_type=MessageType.COMMAND,
                 timestamp=datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ"),
-                uid=self.child_repo.get_parent_id(),
-                data="IA",
+                uid=uid,
+                data=data,
             ).to_lora_format()
 
             end = time.time() + BURST_DURATION
             count = 0
             while time.time() < end:
-                self.lora_comm.send(raw)
+                self.lora_comm.send(frame)
                 count += 1
                 time.sleep(BURST_INTERVAL)
 
-            print(f"[GatewayCore] Instant analytics burst done ({count} sends over {BURST_DURATION}s)")
+            print(f"[GatewayCore] Burst done: {data} -> {uid} ({count} sends over {BURST_DURATION}s)")
 
         threading.Thread(target=_burst, daemon=True).start()
-        print("[GatewayCore] Instant analytics burst started")
+        print(f"[GatewayCore] Burst started: {data} -> {uid}")
 
     # ------------------------------------------------------------------
     # Lifecycle
