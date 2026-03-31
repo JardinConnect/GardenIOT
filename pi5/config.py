@@ -1,5 +1,7 @@
 # config.py
 
+SENSOR_TYPE_MAP = {"L": "L", "TA": "TA", "TS": "TS", "HA": "HA", "HS": "HS", "B": "B"}
+
 # ============================================
 # MQTT
 # ============================================
@@ -30,6 +32,6 @@ DUREE_RESET_SEC = 15.0
 # ============================================
 # Timeouts
 # ============================================
-TIMEOUT_RX_NORMAL = 0.1
+TIMEOUT_RX_NORMAL = 15
 TIMEOUT_RX_PAIRING = 0.5
 ANTI_DOUBLON_SEC = 1.0

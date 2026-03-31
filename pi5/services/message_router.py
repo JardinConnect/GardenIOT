@@ -21,11 +21,7 @@ class MessageRouter:
         """
         Parse et route un message LoRa vers le bon handler
         
-        Args:
-            msg: Message LoRa brut
-            is_pairing_active: True si le mode pairing est actif
         """
-        # Parser le message
         parsed = self.parser.parse(msg)
         
         if not parsed:
@@ -50,10 +46,10 @@ class MessageRouter:
         elif msg_type == "AT":  # Alert Triggered
             self._handle_alert_triggered(parsed)
             
-        elif msg_type == "AC":  # Alert Configured (NOUVEAU)
+        elif msg_type == "AC":  # Alert Configured
             self._handle_alert_ack(uid, parsed, "configured")
             
-        elif msg_type == "AD":  # Alert Deleted (NOUVEAU)
+        elif msg_type == "AD":  # Alert Deleted
             self._handle_alert_ack(uid, parsed, "deleted")
         
         elif msg_type == "U":  # Unpair
@@ -126,16 +122,14 @@ class MessageRouter:
     def _handle_alert_ack(self, uid: str, parsed: dict, action_type: str):
         """
         Gère la réception d'un ACK de l'ESP32 concernant une alerte.
-        Transmet l'information au service d'alerte pour publication MQTT.
         """
-
         if not self.nodes.est_autorise(uid):
             print(f"[LoRa] ACK d'alerte reçu d'un nœud inconnu: {uid}")
             return
-            
-        sensor_type = parsed.get("sensor_type", "UNKNOWN")
-        
-        print(f"\[LoRa] Réception ACK: Alerte {action_type} sur {uid} ({sensor_type})")
-        
-        # On passe le relais au service d'alerte
-        self.alerts.handle_alert_ack(uid, sensor_type, action_type)
+
+        datas = (parsed.get("datas") or "").strip()
+        sensor_type, max_val, min_val = self.parser.parse_alert_ack_datas(datas)
+
+        print(f"[LoRa] Réception ACK: Alerte {action_type} sur {uid} ({sensor_type})")
+
+        self.alerts.handle_alert_ack(uid, sensor_type, action_type, max_val, min_val)

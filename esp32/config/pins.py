@@ -14,8 +14,8 @@ LORA_SCK = 18
 LORA_MISO = 19     
 LORA_MOSI = 23     
 LORA_CS = 5        
-LORA_RST = 14      
-LORA_IRQ = 26      
+LORA_RST = 27      
+LORA_IRQ = 25    
 
 # ============================================
 # PARAMÈTRES RADIO LORA
@@ -33,9 +33,10 @@ LORA_SPI_BAUDRATE = 5000000  # Vitesse SPI (5 MHz)
 # ============================================
 # PINS CAPTEURS
 # ============================================
-DHT22_PIN = 27             
-DS18B20_PIN = 4            
-LM393_PIN = 35             
+DHT22_PIN = 26          
+DS18B20_PIN = 14            
+LM393_PIN = 35
+LM393_2_PIN = 36
 
 # ============================================
 # PINS I2C (BH1750 + DS3231)
@@ -88,7 +89,7 @@ def init_hardware():
     
     # -------------------- SPI + LoRa --------------------
     spi = SPI(
-        1,
+        2,
         baudrate=LORA_SPI_BAUDRATE,
         polarity=0,
         phase=0,
@@ -144,6 +145,7 @@ def init_hardware():
     ds18b20 = None
     lux_sensor = None
     lm393 = None
+    lm393_2 = None
     
     # DHT22
     try:
@@ -170,6 +172,7 @@ def init_hardware():
     try:
         from lm393_sensor import SoilMoistureSensor
         lm393 = SoilMoistureSensor(analog_pin=LM393_PIN)
+        lm393_2 = SoilMoistureSensor(analog_pin=LM393_2_PIN)
     except Exception as e:
         print(f"LM393: {e}")
     
@@ -177,7 +180,8 @@ def init_hardware():
         'dht22': dht22,
         'ds18b20': ds18b20,
         'lux_sensor': lux_sensor,
-        'lm393': lm393
+        'lm393': lm393,
+        'lm393_2' : lm393_2
     }
     
     # -------------------- Bouton --------------------

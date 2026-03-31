@@ -1,5 +1,5 @@
 # services/alert_service.py
-"""Service de gestion des alertes capteurs"""
+"""Service de gestion des alertes"""
 
 import json
 from .message_service import MessageService
@@ -33,9 +33,9 @@ class AlertService:
             if event_type == "alert_config":
                 self._configure_alert(uid, sensor_type, data.get("max"), data.get("min"))
             elif event_type == "alert_sup":
-                self._delete_alert(uid, sensor_type)
+                self._delete_alert(uid, sensor_type, data.get("max"), data.get("min"))
             else:
-                print(f"⚠Evénement d'alerte inconnu: {event_type}")
+                print(f"Evénement d'alerte inconnu: {event_type}")
                 
         except json.JSONDecodeError:
             print(f"Format JSON invalide: {payload}")
@@ -44,17 +44,19 @@ class AlertService:
     
     def _configure_alert(self, uid: str, sensor_type: str, max_val, min_val):
         """Envoi de l'ordre de création via LoRa"""
+
         print(f"\nConfiguration d'alerte pour {uid}")
         print(f"   Capteur: {sensor_type} (Min: {min_val}, Max: {max_val})")
         
         lora_msg = self.parser.build_alert_config(uid, sensor_type, max_val, min_val)
         self.lora.send(lora_msg, retry=5)
 
-    def _delete_alert(self, uid: str, sensor_type: str):
-        """Envoi de l'ordre de suppression via LoRa"""
-        print(f"\nSuppression d'alerte pour {uid} (Capteur: {sensor_type})")
+    def _delete_alert(self, uid: str, sensor_type: str, max_val=None, min_val=None):
+        """Envoi de l'ordre de suppression via LoRa (min/max permettent d'identifier l'alerte à supprimer)."""
+
+        print(f"\nSuppression d'alerte pour {uid} (Capteur: {sensor_type}, Min: {min_val}, Max: {max_val})")
         
-        lora_msg = self.parser.build_alert_delete(uid, sensor_type)
+        lora_msg = self.parser.build_alert_delete(uid, sensor_type, max_val, min_val)
         self.lora.send(lora_msg, retry=5)
 
     def handle_alert_ack(self, uid: str, sensor_type: str, action_type: str, max_val=None, min_val=None):
@@ -75,7 +77,8 @@ class AlertService:
         })
 
     def handle_alert_triggered(self, uid: str, alert_data: dict):
-        """Traite une alerte déclenchée par un ESP32 (La sirène)"""
+        """Traite une alerte déclenchée par un ESP32"""
+
         print(f"\nAlerte déclenchée sur la cellule {uid}")
         print(f"   Capteur: {alert_data.get('sensor_type')} = {alert_data.get('value')}")
         

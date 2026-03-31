@@ -28,12 +28,10 @@ alert_mgr = AlertManager(lora_manager)
 # Charge parent ID
 parent_id = pairing_mgr._charger()
 
-# Timing
 SEND_INTERVAL_SEC = 60
 LISTEN_INTERVAL_MS = 5000
 
 def log(message):
-    """Affiche un message avec l'heure courante (HH:MM:SS)"""
     t = time.localtime()
     timestamp = "{:02d}:{:02d}:{:02d}".format(t[3], t[4], t[5])
     print(f"[{timestamp}] {message}")
@@ -41,7 +39,6 @@ def log(message):
 print("="*40)
 log(f"UID: {UID}")
 print("="*40)
-
 
 
 # ============================================
@@ -52,7 +49,6 @@ last_send_time = 0
 
 while True:
     if parent_id:
-        # ========== MODE CONNECTÉ ==========
         
         now = time.time()
         time_since_last_send = now - last_send_time
@@ -80,16 +76,31 @@ while True:
         
         if ordre:
             type_ordre = ordre.get('type')
-            
-            if type_ordre == 'U':
 
+            if type_ordre == 'U':
                 log("Demande Unpair reçu")
                 parent_id = None
                 pairing_mgr.lancer_unpairing()
             
             elif type_ordre == 'A':
+                sensor = alert_mgr.traiter_config_lora(ordre)
+                
+                if sensor:
 
-                alert_mgr.traiter_config_lora(ordre)
+                    msg_ack = lora_manager.construire_message("AC", sensor)
+                    
+                    lora_manager.envoyer_rafale(msg_ack)
+                else:
+                    log("Échec de la configuration dans alert_mgr")
+
+            elif type_ordre == 'AS':
+                log("Tentative de suppression d'alerte...")
+                sensor = ordre.get('datas', '')
+                if sensor:
+                    sensor = sensor.strip()
+                    datas = alert_mgr.remove_alert_and_build_ad_datas(sensor)
+                    msg_ack = lora_manager.construire_message("AD", datas)
+                    lora_manager.envoyer_rafale(msg_ack)
 
         time.sleep(0.1)
     

@@ -24,8 +24,10 @@ class MqttService:
         """Callback lors de la connexion"""
         if not reason_code.is_failure:
             self.connected = True
-            # S'abonner aux commandes
-            client.subscribe(MQTT_TOPIC_COMMANDS)
+            print("[MQTT] Connecté avec succès au broker")
+            
+            client.subscribe(MQTT_TOPIC_ALERTS)
+            client.subscribe(MQTT_TOPIC_PAIRING)
         else:
             print(f"[MQTT] Échec connexion: {reason_code}")
             self.connected = False
@@ -35,7 +37,6 @@ class MqttService:
         payload = msg.payload.decode()
         print(f"[MQTT] Commande reçue -> {msg.topic}: {payload}")
         
-        # Appeler le callback si défini
         if self.command_callback:
             try:
                 self.command_callback(msg.topic, payload)
@@ -80,9 +81,9 @@ class MqttService:
     
     def publish_event(self, event_type: str, data: dict):
         """
-        Publie un événement (pairing, status, etc.)
-    
+        Publie un événement (pairing, alertes, etc.)
         """
+        
         data["timestamp"] = datetime.now().isoformat()
         
         topic_map = {
@@ -91,7 +92,12 @@ class MqttService:
             "alert": MQTT_TOPIC_ALERTS,
         }
         
-        topic = topic_map.get(event_type, MQTT_TOPIC_STATUS)
+        topic = topic_map.get(event_type)
+        
+        if not topic:
+            print(f"[MQTT] Événement ignoré, topic inconnu pour : {event_type}")
+            return
+            
         self.publish(topic, json.dumps(data))
     
     def disconnect(self):

@@ -1,8 +1,9 @@
 # main.py
-"""Point d'entrée principal du système Garden IoT"""
+"""Système Garden IoT"""
 
 import time
 import gest_noeud
+import json
 from services import (
     MqttService, 
     LoRaService, 
@@ -54,29 +55,47 @@ class GardenIoTSystem:
     def _handle_mqtt_command(self, topic: str, payload: str):
         """Callback pour les commandes MQTT"""
         if "garden/alert" in topic:
-            self.alerts.handle_mqtt_alert_command(payload)
+            try:
+                data = json.loads(payload)
+                event_name = data.get("event")
+                
+                if event_name in ["alert_create", "alert_deleted", "alert_trigger"]:
+                    return 
+
+                if event_name in ["alert_config", "alert_sup"]:
+                    self.alerts.handle_mqtt_alert_command(payload)
+                else:
+                    print(f"Alerte inconnue: {event_name}")
+
+            except json.JSONDecodeError:
+                print(f"Payload non-JSON reçu sur {topic}")
+            except Exception as e:
+                print(f"Erreur traitement commande alerte: {e}")
+                
         if "garden/pairing" in topic:
             try:
                 data = json.loads(payload)
-                if data.get("event") == "pairing_request":
+                event_name = data.get("event")
+            
+                if event_name in ["pairing_start", "pairing_end", "pairing_sucess", "unpair_sucess"]:
+                    return
+                
+                if event_name == "pairing_request":
                     pairing_event = self.pairing_service.start_pairing()
-                    
                     if pairing_event:
                         self._handle_pairing_event(pairing_event)
+                        
+                elif event_name == "request_unpair":
+                    uid_a_supprimer = data.get("uid")
+                    if uid_a_supprimer:
+                        msg_unpair = self.router.parser.build_unpair_command(self.parent_id, uid_a_supprimer)
+                        self.lora.send_burst(msg_unpair)
+                        
                 else:
-                    print(f"Événement de pairing inconnu: {data.get('event')}")
+                    print(f"Événement de pairing inconnu: {event_name}")
+                    
             except json.JSONDecodeError:
                 print(f"Payload non-JSON reçu sur {topic}")
-        elif commande == "unpair":
-                uid_a_supprimer = data.get("uid")
-                
-                if uid_a_supprimer:
-                    print(f"UNPAIR direct pour {uid_a_supprimer}")
-                    
-                    msg_unpair = self.router.parser.build_unpair_command(self.parent_id, uid_a_supprimer)
-                    
-
-                    self.lora.send_burst(msg_unpair)
     
     def _handle_pairing_event(self, event: dict):
         """Gestion des événements de pairing (Début et Fin)"""
@@ -107,12 +126,19 @@ class GardenIoTSystem:
                 
                 # 2. Recevoir et router les messages LoRa
                 timeout_rx = TIMEOUT_RX_PAIRING if self.pairing_service.is_pairing_active() else TIMEOUT_RX_NORMAL
+                import time
+                start_wait = time.time()
+
                 lora_msg = self.lora.receive(timeout=timeout_rx)
+                
+                elapsed = time.time() - start_wait
+
                 
                 if lora_msg:
                     self.router.route_message(lora_msg, self.pairing_service.is_pairing_active())
+
                 
-                time.sleep(0.01)
+                time.sleep(0.1)
                 
         except KeyboardInterrupt:
             self._shutdown("Arrêt demandé par l'utilisateur")

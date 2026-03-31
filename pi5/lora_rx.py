@@ -6,6 +6,7 @@ import adafruit_rfm9x
 import json
 import gest_noeud 
 import datetime
+from services.message_service import MessageService
 
 # ============================================
 # CONFIGURATION
@@ -36,14 +37,8 @@ print(f"\n--- RASPBERRY PRÊT ---")
 # ============================================
 def parser_message(msg):
     """
-    Parse le nouveau format: B|TYPE|TIMESTAMP|UID|DATAS|E
+    Parse format: B|TYPE|TIMESTAMP|UID|DATAS|E
     
-    Retourne: {
-        "type": "D" / "P" / "U" / "PA",
-        "timestamp": "2026-01-08T15:45:30Z",
-        "uid": "004b1235062c",
-        "datas": "1TA25;1TS23;..." ou dict parsé
-    }
     """
     if not msg.startswith("B|") or not msg.endswith("|E"):
         return None
@@ -61,45 +56,10 @@ def parser_message(msg):
         "datas": parts[3] if len(parts) > 3 else ""
     }
     
-    # Parser les données capteurs si type DATA
     if parsed["type"] == "D" and parsed["datas"]:
-        parsed["sensors"] = parse_sensor_data(parsed["datas"])
+        parsed["sensors"] = MessageService._parse_sensor_data(parsed["datas"])
     
     return parsed
-
-def parse_sensor_data(datas):
-    """
-    Parse: 1TA25;1TS23;1HA62;1HS100;1L4;1B100
-    Retourne: {"ta": 25, "ha": 62, "ts": 23, "hs": 100, "lx": 4, "bat": 100}
-    """
-    sensors = {}
-    
-    for item in datas.split(";"):
-        if not item:
-            continue
-        
-        code = item[1:3]
-        value = item[3:]
-        
-        try:
-            value_int = int(value)
-            
-            if code == "TA":
-                sensors["ta"] = value_int
-            elif code == "TS":
-                sensors["ts"] = value_int
-            elif code == "HA":
-                sensors["ha"] = value_int
-            elif code == "HS":
-                sensors["hs"] = value_int
-            elif code == "L":
-                sensors["lx"] = value_int
-            elif code == "B":
-                sensors["bat"] = value_int
-        except:
-            pass
-    
-    return sensors
 
 def construire_ack_pairing(uid):
     """Construit un ACK de pairing"""
@@ -116,7 +76,7 @@ fin_pairing = 0
 DUREE_PAIRING_SEC = 30.0
 DUREE_RESET_SEC = 15.0
 
-print("\n🎧 Passage en mode ÉCOUTE...")
+print("\nPassage en mode ÉCOUTE...")
 rfm9x.idle() 
 time.sleep(0.01)
 rfm9x.listen() 
@@ -182,14 +142,13 @@ while True:
             # Parser le message
             parsed = parser_message(msg)
             
-            #  DEBUG : Afficher le résultat du parsing
             if parsed:
-                print(f"    Parsé: Type={parsed['type']}, UID={parsed['uid']}")
+                print(f"Parsé: Type={parsed['type']}, UID={parsed['uid']}")
             else:
-                print(f"    Échec du parsing")
+                print(f"Échec du parsing")
             
             if not parsed or not parsed.get("uid"):
-                print(f"    Message invalide ou UID manquant")
+                print(f"Message invalide ou UID manquant")
                 continue
             
             mtype = parsed["type"]
@@ -208,7 +167,7 @@ while True:
                     if success:
                         print(f"Nouvel enfant ajouté: {uid}")
                     else:
-                        print(f"ℹ️ESP32 déjà connu: {uid}")
+                        print(f"ESP32 déjà connu: {uid}")
                     
                     print(f"Envoi réponse PAIRING à {uid}...", end="")
                     
