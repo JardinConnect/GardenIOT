@@ -134,7 +134,7 @@ class GatewayCore:
             print(f"[GatewayCore] Device already known: {uid}")
 
         self.mqtt_comm.publish(
-            "garden/pairing/result",
+            "garden/pairing/ack",
             {"uid": uid, "status": "ok", "parent_id": self.child_repo.get_parent_id()},
             qos=1,
         )
@@ -160,7 +160,7 @@ class GatewayCore:
         """Forward alert config acknowledgement to MQTT."""
         uid = payload["uid"]
         self.mqtt_comm.publish(
-            f"garden/alerts/ack/{uid}",
+            "garden/alerts/config/ack",
             {"uid": uid, "status": "received",
              "data": payload["data"], "timestamp": payload["timestamp"]},
             qos=0,
