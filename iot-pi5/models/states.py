@@ -67,9 +67,10 @@ class PairingState(State):
     
     BROADCAST_INTERVAL = 2.0  # secondes entre chaque broadcast
     
-    def __init__(self, gateway_core, duration=30):
+    def __init__(self, gateway_core, duration=30, ack_id=None):
         super().__init__(gateway_core)
         self.duration = duration
+        self.ack_id = ack_id
         self.end_time = 0
         self._last_broadcast = 0
     

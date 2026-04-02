@@ -12,29 +12,29 @@ Tous les messages LoRa suivent le meme format de trame :
 B|TYPE|TIMESTAMP|UID|DATA|E
 ```
 
-| Champ | Description | Exemple |
-|-------|-------------|---------|
-| `B` | Delimiteur de debut (Begin) | `B` |
-| `TYPE` | Type de message (voir tableau ci-dessous) | `D`, `S`, `ACK`, `C`... |
-| `TIMESTAMP` | Horodatage ISO 8601 UTC | `2026-03-30T18:00:00Z` |
-| `UID` | Identifiant de l'emetteur ou du destinataire | `004b1235062c`, `GATEWAY_PI` |
-| `DATA` | Donnees specifiques au type (detaillees ci-dessous) | `1TA22.5;1HA45` |
-| `E` | Delimiteur de fin (End) | `E` |
+| Champ       | Description                                         | Exemple                      |
+| ----------- | --------------------------------------------------- | ---------------------------- |
+| `B`         | Delimiteur de debut (Begin)                         | `B`                          |
+| `TYPE`      | Type de message (voir tableau ci-dessous)           | `D`, `S`, `ACK`, `C`...      |
+| `TIMESTAMP` | Horodatage ISO 8601 UTC                             | `2026-03-30T18:00:00Z`       |
+| `UID`       | Identifiant de l'emetteur ou du destinataire        | `004b1235062c`, `GATEWAY_PI` |
+| `DATA`      | Donnees specifiques au type (detaillees ci-dessous) | `1TA22.5;1HA45`              |
+| `E`         | Delimiteur de fin (End)                             | `E`                          |
 
 ### Types de messages LoRa
 
-| Type | Code | Direction | Description |
-|------|------|-----------|-------------|
-| DATA | `D` | ESP32 -> Pi5 | Donnees capteurs |
-| STATUS | `S` | ESP32 <-> Pi5 | Fin de cycle avec compteur de messages |
-| PAIRING | `PA` | Pi5 -> ESP32 | Attribution de pairing |
-| PA_ACK | `PA_ACK` | ESP32 -> Pi5 | Confirmation de pairing |
-| ACK | `ACK` | Pi5 -> ESP32 | Accuse de reception |
-| ACK | `ACK` | ESP32 -> Pi5 | Accuse de reception (cycle gateway) |
-| ALERT_CONFIG | `A` | Pi5 -> ESP32 | Configuration d'alerte |
-| ALERT_TRIGGER | `T` | ESP32 -> Pi5 | Alerte declenchee |
-| COMMAND | `C` | Pi5 -> ESP32 | Commande generique |
-| UNPAIR | `U` | ESP32 -> Pi5 | Demande de desappariement |
+| Type          | Code     | Direction     | Description                            |
+| ------------- | -------- | ------------- | -------------------------------------- |
+| DATA          | `D`      | ESP32 -> Pi5  | Donnees capteurs                       |
+| STATUS        | `S`      | ESP32 <-> Pi5 | Fin de cycle avec compteur de messages |
+| PAIRING       | `PA`     | Pi5 -> ESP32  | Attribution de pairing                 |
+| PA_ACK        | `PA_ACK` | ESP32 -> Pi5  | Confirmation de pairing                |
+| ACK           | `ACK`    | Pi5 -> ESP32  | Accuse de reception                    |
+| ACK           | `ACK`    | ESP32 -> Pi5  | Accuse de reception (cycle gateway)    |
+| ALERT_CONFIG  | `A`      | Pi5 -> ESP32  | Configuration d'alerte                 |
+| ALERT_TRIGGER | `T`      | ESP32 -> Pi5  | Alerte declenchee                      |
+| COMMAND       | `C`      | Pi5 -> ESP32  | Commande generique                     |
+| UNPAIR        | `U`      | ESP32 -> Pi5  | Demande de desappariement              |
 
 ---
 
@@ -52,21 +52,21 @@ B|D|<timestamp>|<esp32_uid>|<sensor_data>|E
 
 Chaque capteur est encode sous la forme `{index}{code}{value}` separe par `;` :
 
-| Element | Description | Exemple |
-|---------|-------------|---------|
-| `index` | Numero du capteur (1-9) | `1` |
-| `code` | Code du type de mesure (lettres) | `TA`, `HA`, `TS`, `HS`, `L` |
-| `value` | Valeur mesuree (entier ou decimal, peut etre negatif) | `22.5`, `-3` |
+| Element | Description                                           | Exemple                     |
+| ------- | ----------------------------------------------------- | --------------------------- |
+| `index` | Numero du capteur (1-9)                               | `1`                         |
+| `code`  | Code du type de mesure (lettres)                      | `TA`, `HA`, `TS`, `HS`, `L` |
+| `value` | Valeur mesuree (entier ou decimal, peut etre negatif) | `22.5`, `-3`                |
 
 **Codes capteurs connus :**
 
-| Code | Signification |
-|------|---------------|
+| Code | Signification   |
+| ---- | --------------- |
 | `TA` | Temperature Air |
 | `TS` | Temperature Sol |
-| `HA` | Humidite Air |
-| `HS` | Humidite Sol |
-| `L` | Luminosite |
+| `HA` | Humidite Air    |
+| `HS` | Humidite Sol    |
+| `L`  | Luminosite      |
 
 **Exemple complet :**
 
@@ -75,6 +75,7 @@ B|D|2026-03-30T18:00:00Z|004b1235062c|1TA22.7;1TS21.2;1HA43.6;1HS10;2HS8.1|E
 ```
 
 Decodage :
+
 - Capteur 1, Temperature Air : 22.7
 - Capteur 1, Temperature Sol : 21.2
 - Capteur 1, Humidite Air : 43.6
@@ -93,10 +94,10 @@ B|S|<timestamp>|<uid>|<status>;<count>|E
 
 **Champ DATA :** `{status};{count}`
 
-| Element | Description | Valeurs |
-|---------|-------------|---------|
-| `status` | Resultat du cycle | `O` (OK) / `F` (Fail) |
-| `count` | Nombre de messages envoyes dans ce cycle | Entier (ex: `3`) |
+| Element  | Description                              | Valeurs               |
+| -------- | ---------------------------------------- | --------------------- |
+| `status` | Resultat du cycle                        | `O` (OK) / `F` (Fail) |
+| `count`  | Nombre de messages envoyes dans ce cycle | Entier (ex: `3`)      |
 
 **Exemple :**
 
@@ -118,10 +119,10 @@ B|ACK|<timestamp>|<esp32_uid>|<status>;<state>|E
 
 **Champ DATA :** `{status};{state}`
 
-| Element | Description | Valeurs |
-|---------|-------------|---------|
-| `status` | Validation des donnees recues | `OK` (tout recu) / `KO` (erreur ou mismatch) |
-| `state` | Prochaine action pour l'ESP32 | `S` (Sleep) / `L` (Listen - gateway a des messages) |
+| Element  | Description                   | Valeurs                                             |
+| -------- | ----------------------------- | --------------------------------------------------- |
+| `status` | Validation des donnees recues | `OK` (tout recu) / `KO` (erreur ou mismatch)        |
+| `state`  | Prochaine action pour l'ESP32 | `S` (Sleep) / `L` (Listen - gateway a des messages) |
 
 **Exemple :**
 
@@ -139,8 +140,8 @@ B|ACK|2026-03-30T18:00:06Z|004b1235062c|OK;S|E
 B|ACK|<timestamp>|<esp32_uid>|<status>|E
 ```
 
-| Element | Description | Valeurs |
-|---------|-------------|---------|
+| Element  | Description                              | Valeurs     |
+| -------- | ---------------------------------------- | ----------- |
 | `status` | Validation des messages recus du gateway | `OK` / `KO` |
 
 ---
@@ -155,10 +156,10 @@ B|PA|<timestamp>|<pi5_uid>|<new_uid>;<parent_id>|E
 
 **Champ DATA :** `{new_uid};{parent_id}`
 
-| Element | Description | Exemple |
-|---------|-------------|---------|
-| `new_uid` | UID attribue a l'ESP32 | `004b1235062c` |
-| `parent_id` | UID du gateway parent | `GATEWAY_PI` |
+| Element     | Description            | Exemple        |
+| ----------- | ---------------------- | -------------- |
+| `new_uid`   | UID attribue a l'ESP32 | `004b1235062c` |
+| `parent_id` | UID du gateway parent  | `GATEWAY_PI`   |
 
 **Exemple :**
 
@@ -178,8 +179,8 @@ B|PA_ACK|<timestamp>|<esp32_uid>|<status>|E
 
 **Champ DATA :** `{status}`
 
-| Element | Description | Valeurs |
-|---------|-------------|---------|
+| Element  | Description         | Valeurs     |
+| -------- | ------------------- | ----------- |
 | `status` | Resultat du pairing | `OK` / `KO` |
 
 **Exemple :**
@@ -199,6 +200,7 @@ B|C|<timestamp>|<uid>|<command_data>|E
 ```
 
 **Champ UID :**
+
 - **Broadcast** (IA) : `parent_id` (GATEWAY_PI) - tous les ESP32 reconnaissent le parent
 - **Cible** (SET) : `child_uid` (004b1235062c) - seul l'ESP32 cible recoit
 
@@ -224,10 +226,10 @@ B|C|2026-03-30T18:00:00Z|GATEWAY_PI|IA|E
 DATA = "SET:{key}={value};{key}={value}"
 ```
 
-| Cle | Config ESP32 | Description |
-|-----|-------------|-------------|
-| `send_interval` | `device.send_interval` | Intervalle d'envoi en secondes |
-| `sleep_interval` | `power.sleep_interval` | Duree du sleep en secondes |
+| Cle              | Config ESP32           | Description                    |
+| ---------------- | ---------------------- | ------------------------------ |
+| `send_interval`  | `device.send_interval` | Intervalle d'envoi en secondes |
+| `sleep_interval` | `power.sleep_interval` | Duree du sleep en secondes     |
 
 **Exemple :**
 
@@ -271,22 +273,22 @@ B|A|<timestamp>|<esp32_uid>|<alert_config>|E
 
 **Champ DATA :** `{alert_id}:{is_active}:{sensor_configs}`
 
-| Element | Description | Exemple |
-|---------|-------------|---------|
-| `alert_id` | ID de l'alerte | `alert-123` |
-| `is_active` | Alerte active | `1` (oui) / `0` (non) |
-| `sensor_configs` | Configs capteurs separees par `;` | voir ci-dessous |
+| Element          | Description                       | Exemple               |
+| ---------------- | --------------------------------- | --------------------- |
+| `alert_id`       | ID de l'alerte                    | `alert-123`           |
+| `is_active`      | Alerte active                     | `1` (oui) / `0` (non) |
+| `sensor_configs` | Configs capteurs separees par `;` | voir ci-dessous       |
 
 Chaque config capteur : `{index}{type}:{crit_min}:{crit_max}:{warn_min}:{warn_max}`
 
-| Element | Description | Exemple |
-|---------|-------------|---------|
-| `index` | Index du capteur | `1` |
-| `type` | Type de capteur | `TA`, `HA` |
-| `crit_min` | Seuil critique minimum | `0` |
-| `crit_max` | Seuil critique maximum | `40` |
-| `warn_min` | Seuil warning minimum | `5` |
-| `warn_max` | Seuil warning maximum | `35` |
+| Element    | Description            | Exemple    |
+| ---------- | ---------------------- | ---------- |
+| `index`    | Index du capteur       | `1`        |
+| `type`     | Type de capteur        | `TA`, `HA` |
+| `crit_min` | Seuil critique minimum | `0`        |
+| `crit_max` | Seuil critique maximum | `40`       |
+| `warn_min` | Seuil warning minimum  | `5`        |
+| `warn_max` | Seuil warning maximum  | `35`       |
 
 **Exemple :**
 
@@ -306,12 +308,12 @@ B|T|<timestamp>|<esp32_uid>|<alert_data>|E
 
 **Champ DATA :** `{alert_id};{level};{identifier};{value}`
 
-| Element | Description | Exemple |
-|---------|-------------|---------|
-| `alert_id` | ID de l'alerte declenchee | `alert-123` |
-| `level` | Niveau de l'alerte | `C` (Critical) / `W` (Warning) |
-| `identifier` | Identifiant capteur (index + code) | `1HA` |
-| `value` | Valeur mesuree qui a declenche l'alerte | `54.3` |
+| Element      | Description                             | Exemple                        |
+| ------------ | --------------------------------------- | ------------------------------ |
+| `alert_id`   | ID de l'alerte declenchee               | `alert-123`                    |
+| `level`      | Niveau de l'alerte                      | `C` (Critical) / `W` (Warning) |
+| `identifier` | Identifiant capteur (index + code)      | `1HA`                          |
+| `value`      | Valeur mesuree qui a declenche l'alerte | `54.3`                         |
 
 **Exemple :**
 
@@ -371,16 +373,16 @@ Configure une alerte sur un ou plusieurs ESP32.
 }
 ```
 
-| Champ | Type | Description |
-|-------|------|-------------|
-| `id` | string | Identifiant unique de l'alerte |
-| `is_active` | bool | Alerte active ou non |
-| `cell_ids` | string[] | Liste des UIDs ESP32 concernes |
-| `sensors` | object[] | Configuration des seuils par capteur |
-| `sensors[].type` | string | Code capteur (`TA`, `HA`, etc.) |
-| `sensors[].index` | int | Index du capteur |
-| `sensors[].criticalRange` | [min, max] | Seuils critiques |
-| `sensors[].warningRange` | [min, max] | Seuils warning |
+| Champ                     | Type       | Description                          |
+| ------------------------- | ---------- | ------------------------------------ |
+| `id`                      | string     | Identifiant unique de l'alerte       |
+| `is_active`               | bool       | Alerte active ou non                 |
+| `cell_ids`                | string[]   | Liste des UIDs ESP32 concernes       |
+| `sensors`                 | object[]   | Configuration des seuils par capteur |
+| `sensors[].type`          | string     | Code capteur (`TA`, `HA`, etc.)      |
+| `sensors[].index`         | int        | Index du capteur                     |
+| `sensors[].criticalRange` | [min, max] | Seuils critiques                     |
+| `sensors[].warningRange`  | [min, max] | Seuils warning                       |
 
 **Action :** Le Pi5 convertit en trame LoRa `A` et la met en queue pour chaque `cell_id` valide. Envoyee lors du prochain ACK avec state `L`.
 
@@ -398,8 +400,8 @@ Demande de demarrage ou arret du mode pairing.
 }
 ```
 
-| Champ | Type | Valeurs | Description |
-|-------|------|---------|-------------|
+| Champ   | Type   | Valeurs          | Description                    |
+| ------- | ------ | ---------------- | ------------------------------ |
 | `event` | string | `start` / `stop` | Demarrer ou arreter le pairing |
 
 **Action :** Le Pi5 entre en mode PAIRING (broadcast LoRa `PA` aux ESP32 en attente).
@@ -418,13 +420,14 @@ Commande systeme a envoyer aux ESP32.
 }
 ```
 
-| Champ | Type | Valeurs | Description |
-|-------|------|---------|-------------|
-| `command` | string | `instant_analytics` | Remontee immediate des donnees |
-| | | `reboot` | Redemarrage du gateway |
-| | | `factory_reset` | Reinitialisation de la configuration |
+| Champ     | Type   | Valeurs             | Description                          |
+| --------- | ------ | ------------------- | ------------------------------------ |
+| `command` | string | `instant_analytics` | Remontee immediate des donnees       |
+|           |        | `reboot`            | Redemarrage du gateway               |
+|           |        | `factory_reset`     | Reinitialisation de la configuration |
 
 **Action selon la commande :**
+
 - `instant_analytics` : burst LoRa `C` avec data `IA` (broadcast, uid = parent_id)
 - `reboot` : redemarrage du Pi5
 - `factory_reset` : reinitialisation de la configuration
@@ -445,11 +448,11 @@ Mise a jour de la configuration d'un ESP32.
 }
 ```
 
-| Champ | Type | Requis | Description |
-|-------|------|--------|-------------|
-| `uid` | string | non | UID du device cible. Si absent, envoye a tous les children |
-| `send_interval` | int | non | Intervalle d'envoi en secondes (config `device.send_interval`) |
-| `sleep_interval` | int | non | Duree du sleep en secondes (config `power.sleep_interval`) |
+| Champ            | Type   | Requis | Description                                                    |
+| ---------------- | ------ | ------ | -------------------------------------------------------------- |
+| `uid`            | string | non    | UID du device cible. Si absent, envoye a tous les children     |
+| `send_interval`  | int    | non    | Intervalle d'envoi en secondes (config `device.send_interval`) |
+| `sleep_interval` | int    | non    | Duree du sleep en secondes (config `power.sleep_interval`)     |
 
 Au moins un setting (`send_interval` ou `sleep_interval`) est requis.
 
@@ -479,11 +482,11 @@ Donnees capteurs recues d'un ESP32.
 }
 ```
 
-| Champ | Type | Description |
-|-------|------|-------------|
-| `uid` | string | UID de l'ESP32 source |
-| `timestamp` | string | Horodatage ISO 8601 |
-| `sensors` | object | Dictionnaire `{code: valeur}` des mesures |
+| Champ       | Type   | Description                               |
+| ----------- | ------ | ----------------------------------------- |
+| `uid`       | string | UID de l'ESP32 source                     |
+| `timestamp` | string | Horodatage ISO 8601                       |
+| `sensors`   | object | Dictionnaire `{code: valeur}` des mesures |
 
 ---
 
@@ -501,11 +504,11 @@ Resultat d'un pairing reussi.
 }
 ```
 
-| Champ | Type | Description |
-|-------|------|-------------|
-| `uid` | string | UID de l'ESP32 appaire |
-| `status` | string | Toujours `ok` |
-| `parent_id` | string | UID du gateway parent |
+| Champ       | Type   | Description            |
+| ----------- | ------ | ---------------------- |
+| `uid`       | string | UID de l'ESP32 appaire |
+| `status`    | string | Toujours `ok`          |
+| `parent_id` | string | UID du gateway parent  |
 
 ---
 
@@ -522,10 +525,10 @@ Notification de desappariement.
 }
 ```
 
-| Champ | Type | Description |
-|-------|------|-------------|
-| `uid` | string | UID de l'ESP32 desappaire |
-| `action` | string | Toujours `unpaired` |
+| Champ    | Type   | Description               |
+| -------- | ------ | ------------------------- |
+| `uid`    | string | UID de l'ESP32 desappaire |
+| `action` | string | Toujours `unpaired`       |
 
 ---
 
@@ -547,19 +550,19 @@ Alerte declenchee par un ESP32.
 }
 ```
 
-| Champ | Type | Description |
-|-------|------|-------------|
-| `alert_id` | string | ID de l'alerte declenchee |
-| `cell_uid` | string | UID de l'ESP32 source |
-| `sensor_type` | string | Code du capteur (`TA`, `HA`, etc.) |
-| `sensor_index` | int | Index du capteur |
-| `value` | float | Valeur mesuree |
-| `trigger_type` | string | `C` (Critical) / `W` (Warning) |
-| `timestamp` | string | Horodatage du declenchement |
+| Champ          | Type   | Description                        |
+| -------------- | ------ | ---------------------------------- |
+| `alert_id`     | string | ID de l'alerte declenchee          |
+| `cell_uid`     | string | UID de l'ESP32 source              |
+| `sensor_type`  | string | Code du capteur (`TA`, `HA`, etc.) |
+| `sensor_index` | int    | Index du capteur                   |
+| `value`        | float  | Valeur mesuree                     |
+| `trigger_type` | string | `C` (Critical) / `W` (Warning)     |
+| `timestamp`    | string | Horodatage du declenchement        |
 
 ---
 
-#### `garden/alerts/ack/{uid}` (QoS 0)
+#### `garden/alerts/config/ack` (QoS 0)
 
 Confirmation de reception d'une config d'alerte par un ESP32.
 
@@ -574,12 +577,12 @@ Confirmation de reception d'une config d'alerte par un ESP32.
 }
 ```
 
-| Champ | Type | Description |
-|-------|------|-------------|
-| `uid` | string | UID de l'ESP32 |
-| `status` | string | Toujours `received` |
-| `data` | string | Donnees brutes de la config d'alerte |
-| `timestamp` | string | Horodatage de la reception |
+| Champ       | Type   | Description                          |
+| ----------- | ------ | ------------------------------------ |
+| `uid`       | string | UID de l'ESP32                       |
+| `status`    | string | Toujours `received`                  |
+| `data`      | string | Donnees brutes de la config d'alerte |
+| `timestamp` | string | Horodatage de la reception           |
 
 ---
 

@@ -234,11 +234,15 @@ class MessageRouter:
     #     self.gateway.child_repo.remove_child(uid)
 
     def _handle_mqtt_pairing_request(self, payload: dict):
-        """Start or stop pairing mode from MQTT."""
+        """Start or stop pairing mode from MQTT.
+        Payload: {"event": "start"|"stop", "ack_id": "<session_id>"}
+        - ack_id: optional, returned in garden/pairing/ack so the backend can track sessions.
+        """
         event = payload.get("event")
         if event == "start":
-            print("[MessageRouter] Pairing start requested via MQTT")
-            self.gateway.trigger_pairing_mode()
+            ack_id = payload.get("ack_id")
+            print(f"[MessageRouter] Pairing start requested via MQTT (ack_id={ack_id})")
+            self.gateway.trigger_pairing_mode(ack_id=ack_id)
         elif event == "stop":
             print("[MessageRouter] Pairing stop requested via MQTT")
             from models.states import SystemState

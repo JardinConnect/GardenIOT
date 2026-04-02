@@ -133,11 +133,13 @@ class GatewayCore:
         else:
             print(f"[GatewayCore] Device already known: {uid}")
 
-        self.mqtt_comm.publish(
-            "garden/pairing/ack",
-            {"uid": uid, "status": "ok", "parent_id": self.child_repo.get_parent_id()},
-            qos=1,
-        )
+        ack_id = self.current_state.ack_id if hasattr(self.current_state, 'ack_id') else None
+
+        mqtt_payload = {"uid": uid, "status": "ok", "parent_id": self.child_repo.get_parent_id()}
+        if ack_id:
+            mqtt_payload["ack_id"] = ack_id
+
+        self.mqtt_comm.publish("garden/pairing/ack", mqtt_payload, qos=1)
 
         self.set_state(SystemState.NORMAL)
 
@@ -291,13 +293,18 @@ class GatewayCore:
         self.current_state = self.states[state]
         self.current_state.enter()
 
-    def trigger_pairing_mode(self):
-        """Activate pairing mode."""
+    def trigger_pairing_mode(self, ack_id: str = None):
+        """Activate pairing mode with optional ack_id for session tracking."""
         if self.current_state and isinstance(self.current_state, PairingState):
             print("[GatewayCore] Pairing mode already active")
             return
-        print("[GatewayCore] Activating pairing mode")
-        self.set_state(SystemState.PAIRING)
+        print(f"[GatewayCore] Activating pairing mode (ack_id={ack_id})")
+        # Create a fresh PairingState with the ack_id and set it directly
+        pairing_state = PairingState(self, duration=self.config.get("pairing_duration", 30), ack_id=ack_id)
+        if self.current_state:
+            self.current_state.exit()
+        self.current_state = pairing_state
+        self.current_state.enter()
 
     def handle_button_press(self, duration: float):
         """Handle physical button press."""
