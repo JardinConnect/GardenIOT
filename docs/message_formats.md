@@ -434,6 +434,32 @@ Commande systeme a envoyer aux ESP32.
 
 ---
 
+#### `garden/devices/command/ack` (QoS 1)
+
+Confirmation de fin de commande Instant Analytics. Publie par le Pi5 une fois tous les messages des ESP32 recus.
+
+**Payload :**
+
+```json
+{
+  "ack_id": "ia-123",
+  "status": "OK",
+  "uid": "004b1200",
+  "received_count": 1,
+  "declared_count": 1
+}
+```
+
+| Champ            | Type   | Description                                           |
+| ---------------- | ------ | ----------------------------------------------------- |
+| `ack_id`         | string | ID de session recu avec la commande instant_analytics |
+| `status`         | string | `OK` ou `KO` selon le resultat                        |
+| `uid`            | string | UID de l'ESP32 qui a repondu                          |
+| `received_count` | int    | Nombre de messages recus du device                    |
+| `declared_count` | int    | Nombre de messages declares par le device (STATUS)    |
+
+---
+
 #### `garden/devices/settings` (QoS 0)
 
 Mise a jour de la configuration d'un ESP32.
@@ -622,13 +648,16 @@ ESP32                          Pi5                         Backend
 ```
 Backend                        Pi5                         ESP32 (sleep)
   |-- garden/devices/command -->|                              |
-  |   {"command":"instant_analytics"}                          |
+  |   {"command":"instant_analytics","ack_id":"ia-123"}        |
   |                            |-- burst 18s ----------------->|
   |                            |   B|C|ts|GATEWAY_PI|IA|E     |  (broadcast)
   |                            |                              |-- wake
   |                            |                              |-- read sensors
   |                            |<-- B|D|ts|uid|data|E --------|
   |<-- garden/analytics -------|                              |
+  |                            |<-- B|S|ts|uid|O;1|E ----------|
+  |<-- garden/devices/command/ack                              |
+  |   {"ack_id":"ia-123","status":"OK","uid":"..."}            |
 ```
 
 ### 4.4 Settings Update (Backend -> ESP32 via Pi5)

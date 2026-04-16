@@ -22,14 +22,14 @@ Frontend (MQTT)          Pi5 Gateway              ESP32 (SleepState)
 
 ### Composants impliques
 
-| Composant | Fichier | Role |
-|-----------|---------|------|
-| **MessageRouter** | `iot-pi5/core/message_router.py` | Recoit la commande MQTT et dispatch |
-| **GatewayCore** | `iot-pi5/core/gateway_core.py` | Envoie le burst LoRa aux ESP32 |
-| **SleepState** | `iot-esp32/src/core/states.py` | Ecoute LoRa pendant les micro-sleeps |
-| **DeviceManager** | `iot-esp32/src/core/device_manager.py` | Dispatch le message, gere la commande IA |
-| **CommunicationManager** | `iot-esp32/src/communication/communication_manager.py` | Force l'envoi des donnees (bypass intervalle) |
-| **LoRaProtocol** | `iot-esp32/src/communication/lora_protocol.py` | Gestion radio SX1276, pre-check IRQ apres lightsleep |
+| Composant                | Fichier                                                | Role                                                 |
+| ------------------------ | ------------------------------------------------------ | ---------------------------------------------------- |
+| **MessageRouter**        | `iot-pi5/core/message_router.py`                       | Recoit la commande MQTT et dispatch                  |
+| **GatewayCore**          | `iot-pi5/core/gateway_core.py`                         | Envoie le burst LoRa aux ESP32                       |
+| **SleepState**           | `iot-esp32/src/core/states.py`                         | Ecoute LoRa pendant les micro-sleeps                 |
+| **DeviceManager**        | `iot-esp32/src/core/device_manager.py`                 | Dispatch le message, gere la commande IA             |
+| **CommunicationManager** | `iot-esp32/src/communication/communication_manager.py` | Force l'envoi des donnees (bypass intervalle)        |
+| **LoRaProtocol**         | `iot-esp32/src/communication/lora_protocol.py`         | Gestion radio SX1276, pre-check IRQ apres lightsleep |
 
 ---
 
@@ -41,9 +41,11 @@ Le frontend publie sur le topic MQTT :
 
 ```
 Topic:   garden/devices/command
-Payload: {"command": "instant_analytics"}
+Payload: {"command": "instant_analytics", "ack_id": "ia-123"}
 QoS:     0
 ```
+
+Le champ `ack_id` est optionnel. S'il est present, le Pi5 publiera une confirmation sur `garden/devices/command/ack` une fois tous les messages recus.
 
 ### 1.2 Routage MQTT
 
@@ -68,6 +70,7 @@ BURST_DURATION = 18.0  # couvre le sleep_interval ESP32 (15s) + marge
 **Pourquoi un burst ?** L'ESP32 en SleepState n'ecoute que 100ms toutes les 1100ms (~9% du temps). Un seul envoi a une faible probabilite d'etre capte. Le burst de 18s garantit que l'ESP32 capte au moins un message, peu importe ou il en est dans son cycle de sleep.
 
 **Calcul de probabilite :**
+
 - Cycle ESP32 : 1000ms sleep + 100ms listen = 1100ms
 - En 18s : ~16 cycles, soit ~1600ms de temps d'ecoute total
 - Le Pi5 envoie ~36 paquets (un toutes les 500ms)
@@ -119,6 +122,7 @@ C'est le point technique le plus critique du mecanisme.
 #### Le probleme
 
 Pendant `lightsleep(1000ms)` :
+
 - Le **CPU ESP32 est arrete** (pas d'execution de code, pas de traitement d'interruptions GPIO)
 - Le **radio SX1276 continue de fonctionner** (c'est un chip externe sur SPI, independant du CPU)
 - Si le radio est en mode RX, il **peut recevoir un paquet** pendant le lightsleep
@@ -171,12 +175,12 @@ def receive(self, timeout_ms=None):
 
 **Ordre des operations dans le registre IRQ (0x12) du SX1276 :**
 
-| Bit | Flag | Signification |
-|-----|------|---------------|
-| 6 | RxDone | Paquet recu avec succes |
-| 5 | CrcError | Erreur CRC detectee |
-| 4 | ValidHeader | Header valide recu |
-| 3 | TxDone | Transmission terminee |
+| Bit | Flag        | Signification           |
+| --- | ----------- | ----------------------- |
+| 6   | RxDone      | Paquet recu avec succes |
+| 5   | CrcError    | Erreur CRC detectee     |
+| 4   | ValidHeader | Header valide recu      |
+| 3   | TxDone      | Transmission terminee   |
 
 ### 2.3 Assurer le mode RX avant lightsleep
 
@@ -230,12 +234,14 @@ if self._wake_message:
 ```
 
 `_handle_incoming()` verifie l'UID et publie l'evenement sur l'EventBus :
+
 - Event : `message.received.C`
 - Handler : `DeviceManager._handle_command_message()`
 
 ### 3.2 Verification UID
 
 `_handle_incoming()` appelle `_check_my_uid(uid)` qui accepte :
+
 - **L'UID du device** (`004b1235062c`) - messages adresses a ce device
 - **L'UID du parent/gateway** (`GATEWAY_PI`) - messages broadcast depuis le gateway
 
@@ -261,6 +267,7 @@ def _handle_command_message(self, message):
 ```
 
 Actions :
+
 1. **`_force_send = True`** sur le CommunicationManager
 2. **Transition ActiveState** si pas deja actif (dans le cas du reveil depuis SleepState, on est deja en ActiveState)
 
@@ -312,13 +319,14 @@ ActiveState.handle()
 
 Le systeme de commandes est generique et extensible via le topic MQTT `garden/devices/command` :
 
-| Commande MQTT | Code LoRa | Description |
-|---------------|-----------|-------------|
-| `instant_analytics` | `IA` | Remontee immediate des donnees capteurs |
-| `reboot` | `REBOOT` | Redemarrage du device |
-| `factory_reset` | `RESET_CONFIG` | Reinitialisation de la configuration |
+| Commande MQTT       | Code LoRa      | Description                             |
+| ------------------- | -------------- | --------------------------------------- |
+| `instant_analytics` | `IA`           | Remontee immediate des donnees capteurs |
+| `reboot`            | `REBOOT`       | Redemarrage du device                   |
+| `factory_reset`     | `RESET_CONFIG` | Reinitialisation de la configuration    |
 
 Pour ajouter une nouvelle commande :
+
 1. Ajouter le cas dans `MessageRouter._handle_mqtt_device_command()` (Pi5)
 2. Implementer l'action dans `GatewayCore` (Pi5)
 3. Ajouter le cas dans `DeviceManager._handle_command_message()` (ESP32)
@@ -402,29 +410,84 @@ Temps (ms)    ESP32                           Pi5
 
 ---
 
+## 7. Confirmation de commande (ACK)
+
+### 7.1 Principe
+
+Quand une commande IA est envoyee avec un `ack_id`, le Pi5 publie une confirmation une fois tous les messages d'un ESP32 recus.
+
+### 7.2 Topic MQTT
+
+```
+Topic:   garden/devices/command/ack
+Payload: {"ack_id": "ia-123", "status": "OK", "uid": "004b1200", "received_count": 1, "declared_count": 1}
+QoS:     1
+```
+
+### 7.3 Implementation Pi5
+
+Dans `MessageRouter` :
+
+```python
+def _handle_mqtt_device_command(self, payload: dict):
+    if payload.get("command") == "instant_analytics":
+        self._ia_pending_ack_id = payload.get("ack_id")  # Stocker pour les sessions
+        self.gateway.get_instant_analytics()
+
+def _handle_lora_status(self, message: LoRaMessage):
+    # ... verification des compteurs ...
+    if session.get("ack_id"):
+        self.gateway.mqtt_comm.publish("garden/devices/command/ack", {
+            "ack_id": ack_id,
+            "status": ack_status,
+            "uid": uid,
+            "received_count": received_count,
+            "declared_count": declared_count,
+        })
+```
+
+### 7.4 Flow complet avec ACK
+
+```
+Backend    Pi5                    ESP32
+  |-- IA command (ack_id=ia-123) ->|
+  |        |-- burst 18s --------->|
+  |        |<-- data --------------|
+  |<-- analytics -----------------|
+  |        |<-- status ------------|
+  |<-- command/ack (ia-123, OK) ---|
+```
+
+---
+
 ## 8. Bugs connus et corrections appliquees
 
 ### 8.1 Paquet perdu apres lightsleep
+
 - **Cause :** `receive()` effacait les IRQ flags avant de verifier si un paquet etait arrive pendant le sleep
 - **Fix :** Pre-check du registre IRQ (bit RxDone) avant toute operation de clear
 - **Fichier :** `lora_protocol.py` - methode `receive()`
 
 ### 8.2 Radio en Standby au debut du sleep
+
 - **Cause :** Apres `send()` dans ActiveState, le radio reste en Standby, donc le premier lightsleep ne peut rien recevoir
 - **Fix :** Appel `receive(timeout_ms=1)` a la fin de `run_cycle()` pour forcer le radio en RX
 - **Fichier :** `device_manager.py` - methode `run_cycle()`
 
 ### 8.3 Burst trop court
+
 - **Cause :** Burst initial de 3s ne couvrait pas le sleep interval de 15s
 - **Fix :** Burst augmente a 18s avec envoi toutes les 500ms
 - **Fichier :** `gateway_core.py` - methode `get_instant_analytics()`
 
 ### 8.4 UID non reconnu pour les commandes gateway
+
 - **Cause :** `_check_my_uid()` ne reconnaissait que l'UID du device, pas celui du gateway
 - **Fix :** Accepter aussi le `parent_id` (gateway) comme UID valide
 - **Fichier :** `communication_manager.py` - methode `_check_my_uid()`
 
 ### 8.5 IRQ parasites du bouton apres lightsleep
+
 - **Cause :** `lightsleep()` + `wake_on_ext0` declenchait des IRQ parasites sur le pin bouton
 - **Fix :** `SleepState.exit()` efface `_pairing_requested`
 - **Fichier :** `states.py` - methode `SleepState.exit()`
