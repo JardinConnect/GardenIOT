@@ -324,9 +324,11 @@ class MessageRouter:
         - uid: optional, target a specific device. If omitted, sends to all children.
         Only known setting keys are forwarded. At least one valid key is required.
         """
-        ALLOWED_KEYS = {"send_interval", "sleep_interval"}
+        ALLOWED_KEYS = {"device.send_interval", "power.sleep_interval"}
         target_uid = payload.get("uid")
-        settings = {k: v for k, v in payload.items() if k in ALLOWED_KEYS}
+        data = payload.get("data", {})
+
+        settings = {k: v for k, v in data.items() if k in ALLOWED_KEYS}
 
         if not settings:
             print(f"[MessageRouter] No valid settings in payload: {payload}")

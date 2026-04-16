@@ -173,15 +173,30 @@ class GatewayCore:
         self._lora_command_burst("IA")
 
     def update_device_settings(self, settings: dict, target_uid: str = None):
-        """Send SET command to a specific child or all children."""
+        """Send SET command to a specific child or all children via message_queue.
+        This ensures reliable delivery with ACK confirmation (unlike _lora_command_burst)."""
         data_str = "SET:" + ";".join(f"{k}={v}" for k, v in settings.items())
+        print(f"[GatewayCore] update_device_settings: target={target_uid}, data={data_str}")
+
+        from models.messages import LoRaMessage, MessageType
+        from datetime import datetime
+
+        lora_msg = LoRaMessage(
+            message_type=MessageType.COMMAND,
+            timestamp=datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ"),
+            uid=target_uid,
+            data=data_str,
+        ).to_lora_format()
+
         if target_uid:
-            self._lora_command_burst(data_str, target_uid=target_uid)
+            self.message_queue.queue_message(target_uid, lora_msg)
+            print(f"[GatewayCore] Settings queued for {target_uid}")
         else:
             children = self.child_repo.get_all_children()
             for c in children:
                 uid = c["id"] if isinstance(c, dict) else c
-                self._lora_command_burst(data_str, target_uid=uid)
+                self.message_queue.queue_message(uid, lora_msg)
+                print(f"[GatewayCore] Settings queued for {uid}")
 
     def _lora_command_burst(self, data: str, target_uid: str = None):
         """Send a LoRa COMMAND burst in a daemon thread.

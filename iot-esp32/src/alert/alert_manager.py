@@ -59,7 +59,7 @@ class AlertManager:
 
             print(f"[AlertManager] Alert config received: {data}")
             # Parse LoRa format
-            parts = data.split(':')
+            parts = data.split(':', 2)
             if len(parts) < 3:
                 print("[AlertManager] Invalid message format")
                 return
@@ -94,13 +94,13 @@ class AlertManager:
                     continue
 
                 index, metric_code = self._separate_index_and_code(parts[0])
-                crit_min = int(parts[1])
-                crit_max = int(parts[2])
+                crit_min = float(parts[1])
+                crit_max = float(parts[2])
 
                 # Handle warning thresholds (optional)
                 has_warning = len(parts) == 5
-                warn_min = int(parts[3]) if has_warning else None
-                warn_max = int(parts[4]) if has_warning else None
+                warn_min = float(parts[3]) if has_warning else None
+                warn_max = float(parts[4]) if has_warning else None
 
                 # Find matching sensor and metric
                 sensors = self._config.get('sensors', [])

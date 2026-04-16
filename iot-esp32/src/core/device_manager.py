@@ -277,17 +277,13 @@ class DeviceManager:
         """Parse and apply settings from a SET command.
         raw format: key=val;key=val  (e.g. send_interval=30;sleep_interval=10)
         """
-        SETTINGS_MAP = {
-            'send_interval': 'device.send_interval',
-            'sleep_interval': 'power.sleep_interval',
-        }
 
         applied = []
         for pair in raw.split(';'):
             if '=' not in pair:
                 continue
             key, val = pair.split('=', 1)
-            config_path = SETTINGS_MAP.get(key)
+            config_path = key
             if not config_path:
                 print(f"[DeviceManager] Unknown setting: {key}")
                 continue
