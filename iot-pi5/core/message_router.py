@@ -98,7 +98,7 @@ class MessageRouter:
         self.gateway.event_bus.publish("device.data.received", {
             "uid": uid,
             "timestamp": message.timestamp,
-            "sensors": sensor_data.parsed_values,
+            "data": sensor_data.parsed_values,
         })
 
     def _handle_lora_status(self, message: LoRaMessage):

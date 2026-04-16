@@ -86,7 +86,7 @@ class GatewayCore:
         self.mqtt_comm.publish("garden/analytics", {
             "uid": payload["uid"],
             "timestamp": payload["timestamp"],
-            "sensors": payload["sensors"],
+            "data": payload["data"],
         }, qos=1)
 
     def _on_cycle_done(self, payload: dict):
