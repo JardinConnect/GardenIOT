@@ -420,9 +420,11 @@ Quand une commande IA est envoyee avec un `ack_id`, le Pi5 publie une confirmati
 
 ```
 Topic:   garden/devices/command/ack
-Payload: {"ack_id": "ia-123", "status": "OK", "uid": "004b1200", "received_count": 1, "declared_count": 1}
+Payload: {"ack_id": "ia-123", "status": "OK", "device_count": 3}
 QoS:     1
 ```
+
+L'ack est publie **une seule fois** quand tous les devices ont repondu (ou apres un timeout).
 
 ### 7.3 Implementation Pi5
 
@@ -431,19 +433,39 @@ Dans `MessageRouter` :
 ```python
 def _handle_mqtt_device_command(self, payload: dict):
     if payload.get("command") == "instant_analytics":
-        self._ia_pending_ack_id = payload.get("ack_id")  # Stocker pour les sessions
+        ack_id = payload.get("ack_id")
+        if ack_id:
+            # Creer une session IA globale
+            children = self.gateway.child_repo.get_all_children()
+            self._ia_session = {
+                "ack_id": ack_id,
+                "pending_uids": {c["id"] for c in children},
+                "results": {},
+            }
         self.gateway.get_instant_analytics()
 
 def _handle_lora_status(self, message: LoRaMessage):
-    # ... verification des compteurs ...
-    if session.get("ack_id"):
-        self.gateway.mqtt_comm.publish("garden/devices/command/ack", {
-            "ack_id": ack_id,
+    # ... verification du device ...
+    if self._ia_session and uid in self._ia_session["pending_uids"]:
+        # Accumuler le resultat
+        self._ia_session["pending_uids"].discard(uid)
+        self._ia_session["results"][uid] = {
             "status": ack_status,
-            "uid": uid,
             "received_count": received_count,
             "declared_count": declared_count,
-        })
+        }
+        # Publier l'ack global si tous ont repondu
+        if not self._ia_session["pending_uids"]:
+            self._publish_ia_session_ack()
+
+def _publish_ia_session_ack(self):
+    all_ok = all(r["status"] == "OK" for r in self._ia_session["results"].values())
+    self.gateway.mqtt_comm.publish("garden/devices/command/ack", {
+        "ack_id": self._ia_session["ack_id"],
+        "status": "OK" if all_ok else "KO",
+        "device_count": len(self._ia_session["results"]),
+    })
+    self._ia_session = None
 ```
 
 ### 7.4 Flow complet avec ACK

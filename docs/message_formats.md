@@ -444,19 +444,15 @@ Confirmation de fin de commande Instant Analytics. Publie par le Pi5 une fois to
 {
   "ack_id": "ia-123",
   "status": "OK",
-  "uid": "004b1200",
-  "received_count": 1,
-  "declared_count": 1
+  "device_count": 3
 }
 ```
 
-| Champ            | Type   | Description                                           |
-| ---------------- | ------ | ----------------------------------------------------- |
-| `ack_id`         | string | ID de session recu avec la commande instant_analytics |
-| `status`         | string | `OK` ou `KO` selon le resultat                        |
-| `uid`            | string | UID de l'ESP32 qui a repondu                          |
-| `received_count` | int    | Nombre de messages recus du device                    |
-| `declared_count` | int    | Nombre de messages declares par le device (STATUS)    |
+| Champ          | Type   | Description                                           |
+| -------------- | ------ | ----------------------------------------------------- |
+| `ack_id`       | string | ID de session recu avec la commande instant_analytics |
+| `status`       | string | `OK` si tous les devices OK, `KO` sinon               |
+| `device_count` | int    | Nombre total de devices ayant repondu                 |
 
 ---
 
@@ -657,7 +653,7 @@ Backend                        Pi5                         ESP32 (sleep)
   |<-- garden/analytics -------|                              |
   |                            |<-- B|S|ts|uid|O;1|E ----------|
   |<-- garden/devices/command/ack                              |
-  |   {"ack_id":"ia-123","status":"OK","uid":"..."}            |
+  |   {"ack_id":"ia-123","status":"OK","device_count":3} |
 ```
 
 ### 4.4 Settings Update (Backend -> ESP32 via Pi5)

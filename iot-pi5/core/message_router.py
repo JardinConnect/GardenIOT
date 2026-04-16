@@ -28,8 +28,9 @@ class MessageRouter:
 
     def __init__(self, gateway_core):
         self.gateway = gateway_core
-        self._receive_sessions = {}  # {uid: {"count": int, "ack_id": str}} - reset after STATUS
-        self._ia_pending_ack_id = None  # ack_id pending for next IA session
+        self._receive_sessions = {}  # {uid: {"count": int}} - reset after STATUS
+        # Session IA globale - attend tous les devices avant de publier l'ack
+        self._ia_session = None  # {"ack_id": str, "pending_uids": set(), "results": {uid: {...}}}
 
     # ------------------------------------------------------------------
     # Public entry points (called by GatewayCore threads)
@@ -50,13 +51,10 @@ class MessageRouter:
             # the ESP32's _data_count (which counts all queue items, not just type 'D').
             if (lora_msg.message_type in self._SESSION_PAYLOAD_TYPES
                     and self.gateway.child_repo.is_child_authorized(lora_msg.uid)):
-                session = self._receive_sessions.get(lora_msg.uid, {"count": 0, "ack_id": None})
-                session["count"] += 1
-                # Propager l'ack_id IA pending vers cette session si premier message
-                if session["count"] == 1 and self._ia_pending_ack_id:
-                    session["ack_id"] = self._ia_pending_ack_id
-                self._receive_sessions[lora_msg.uid] = session
-                print(f"[MessageRouter] Session count for {lora_msg.uid}: {session['count']}")
+                self._receive_sessions[lora_msg.uid] = \
+                    self._receive_sessions.get(lora_msg.uid, 0) + 1
+                print(f"[MessageRouter] Session count for {lora_msg.uid}: "
+                      f"{self._receive_sessions[lora_msg.uid]}")
 
             handler_name = f"_handle_lora_{lora_msg.message_type.name.lower()}"
             handler = getattr(self, handler_name, self._handle_unknown_lora)
@@ -109,6 +107,7 @@ class MessageRouter:
         """
         Compare declared vs received count and publish device.cycle.done.
         GatewayCore subscribes to device.cycle.done to decide ACK state (L/S) and send ACK.
+        Also tracks IA session results and publishes global ack when all devices respond.
         """
         uid = message.uid
         if not self.gateway.child_repo.is_child_authorized(uid):
@@ -123,9 +122,7 @@ class MessageRouter:
         except (ValueError, IndexError):
             declared_count = 0
 
-        session = self._receive_sessions.pop(uid, {"count": 0, "ack_id": None})
-        received_count = session["count"]
-        ack_id = session.get("ack_id")
+        received_count = self._receive_sessions.pop(uid, 0)
         print(f"[MessageRouter] STATUS from {uid}: esp={esp_status} declared={declared_count} received={received_count}")
 
         if esp_status == 'O' and received_count == declared_count and declared_count > 0:
@@ -134,24 +131,43 @@ class MessageRouter:
             ack_status = 'KO'
             print(f"[MessageRouter] Count mismatch or ESP32 failure → ack_status=KO")
 
-        # Publier l'ack de fin de commande IA si ack_id présent
-        if ack_id:
-            self.gateway.mqtt_comm.publish("garden/devices/command/ack", {
-                "ack_id": ack_id,
+        # Accumuler les resultats dans la session IA globale
+        if self._ia_session and uid in self._ia_session["pending_uids"]:
+            self._ia_session["pending_uids"].discard(uid)
+            self._ia_session["results"][uid] = {
                 "status": ack_status,
-                "uid": uid,
                 "received_count": received_count,
                 "declared_count": declared_count,
-            }, qos=1)
-            print(f"[MessageRouter] IA command ack published: {ack_id} -> {ack_status}")
-            # Nettoyer le pending ack_id après le premier ack réussi
-            if self._ia_pending_ack_id == ack_id:
-                self._ia_pending_ack_id = None
+            }
+            print(f"[MessageRouter] IA session: {len(self._ia_session['pending_uids'])} devices remaining")
+
+            # Publier l'ack global si tous les devices ont repondu
+            if not self._ia_session["pending_uids"]:
+                self._publish_ia_session_ack()
 
         self.gateway.event_bus.publish("device.cycle.done", {
             "uid": uid,
             "ack_status": ack_status,
         })
+
+    def _publish_ia_session_ack(self):
+        """Publie l'ack de fin de session IA une fois tous les devices recus."""
+        if not self._ia_session:
+            return
+        session = self._ia_session
+        results = session["results"]
+
+        # Determiner le status global (OK seulement si tous OK)
+        all_ok = all(r["status"] == "OK" for r in results.values())
+        global_status = "OK" if all_ok else "KO"
+
+        self.gateway.mqtt_comm.publish("garden/devices/command/ack", {
+            "ack_id": session["ack_id"],
+            "status": global_status,
+            "device_count": len(results),
+        }, qos=1)
+        print(f"[MessageRouter] IA session ack published: {session['ack_id']} -> {global_status} ({len(results)} devices)")
+        self._ia_session = None
 
     def _handle_lora_ack(self, message: LoRaMessage):
         """
@@ -281,8 +297,17 @@ class MessageRouter:
         if command == "instant_analytics":
             ack_id = payload.get("ack_id")
             print(f"[MessageRouter] Instant analytics command received (ack_id={ack_id})")
-            # Stocker l'ack_id pour les sessions futures (sera propagé à chaque device)
-            self._ia_pending_ack_id = ack_id
+            # Creer une session IA globale si ack_id fourni
+            if ack_id:
+                children = self.gateway.child_repo.get_all_children()
+                pending_uids = {c["id"] if isinstance(c, dict) else c for c in children}
+                self._ia_session = {
+                    "ack_id": ack_id,
+                    "pending_uids": pending_uids,
+                    "results": {},
+                    "start_time": datetime.now().isoformat(),
+                }
+                print(f"[MessageRouter] IA session started: {ack_id}, waiting for {len(pending_uids)} devices")
             self.gateway.get_instant_analytics()
         elif command == "reboot":
             print("[MessageRouter] Reboot command received")
