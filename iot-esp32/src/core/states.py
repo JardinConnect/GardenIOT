@@ -187,14 +187,17 @@ class SleepState(DeviceState):
         print(f"[SleepState] Sleeping {interval}s ({cycles} cycles with listen window)")
         
         for _ in range(cycles):
-            # 1. Micro-sleep
-            try:
-                from machine import lightsleep
-                lightsleep(micro_sleep_ms)
-            except ImportError:
-                time.sleep_ms(micro_sleep_ms)
+            # 1. Micro-sleep (time.sleep_ms keeps CPU awake so IRQ fires normally)
+            time.sleep_ms(micro_sleep_ms)
             
-            # 2. Écoute LoRa rapide - wake sur n'importe quel message entrant
+            # 2. Check if button was pressed (IRQ sets _pairing_requested)
+            if context._pairing_requested:
+                context._pairing_requested = False
+                print("[SleepState] Button pressed - switching to pairing")
+                context.set_state(PairingState())
+                return
+            
+            # 3. Écoute LoRa rapide - wake sur n'importe quel message entrant
             try:
                 msg = context.communication.receive(timeout_ms=listen_timeout_ms)
                 if msg:
