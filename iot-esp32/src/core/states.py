@@ -183,25 +183,31 @@ class SleepState(DeviceState):
         micro_sleep_ms = context.config.get('power.micro_sleep_ms', 1000)
         listen_timeout_ms = context.config.get('power.listen_timeout_ms', 100)
         cycles = (interval * 1000) // micro_sleep_ms
+        early_threshold = micro_sleep_ms // 2
         
-        print(f"[SleepState] Sleeping {interval}s ({cycles} cycles with listen window)")
+        try:
+            from machine import lightsleep
+            _sleep = lambda ms: lightsleep(ms)
+        except ImportError:
+            _sleep = lambda ms: time.sleep_ms(ms)
+        
+        print(f"[SleepState] Sleeping {interval}s ({cycles} cycles)")
         
         for _ in range(cycles):
-            # 1. Micro-sleep (time.sleep_ms keeps CPU awake so IRQ fires normally)
-            time.sleep_ms(micro_sleep_ms)
+            t0 = time.ticks_ms()
+            _sleep(micro_sleep_ms)
+            elapsed = time.ticks_diff(time.ticks_ms(), t0)
             
-            # 2. Check if button was pressed (IRQ sets _pairing_requested)
-            if context._pairing_requested:
+            if elapsed < early_threshold or context._pairing_requested:
                 context._pairing_requested = False
-                print("[SleepState] Button pressed - switching to pairing")
+                print(f"[SleepState] Woken early ({elapsed}ms) - switching to pairing")
                 context.set_state(PairingState())
                 return
             
-            # 3. Écoute LoRa rapide - wake sur n'importe quel message entrant
             try:
                 msg = context.communication.receive(timeout_ms=listen_timeout_ms)
                 if msg:
-                    print(f"[SleepState] LoRa message received (type={msg.get('type')}), waking up")
+                    print(f"[SleepState] LoRa wake (type={msg.get('type')})")
                     context._wake_message = msg
                     context.set_state(ActiveState())
                     return
