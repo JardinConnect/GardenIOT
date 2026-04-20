@@ -2,7 +2,7 @@
   "device": {
     "uid": "004b1235062c",
     "parent_id": "GATEWAY_PI",
-    "send_interval": 3600
+    "send_interval": 60
   },
 
   "lora": {
@@ -115,7 +115,7 @@
   },
 
   "power": {
-    "sleep_interval": 900,
+    "sleep_interval": 60,
     "reset_duration_ms": 10000,
     "micro_sleep_ms": 1000,
     "listen_timeout_ms": 100

@@ -211,13 +211,12 @@ class AlertConfig:
         # Convertir les sensors en format LoRa
         sensor_configs = []
         for sensor in self.sensors or []:
-            sensor_type = sensor.get("type", "")
-            index = sensor.get("index", 0)
+            sensor_id = sensor.get("sensorId", "")
             critical = sensor.get("criticalRange", [0, 100])
             warning = sensor.get("warningRange", [0, 100])
             
             # Format: TYPE:INDEX:CRIT_MIN:CRIT_MAX:WARN_MIN:WARN_MAX
-            config_str = f"{index}{sensor_type}:{critical[0]}:{critical[1]}:{warning[0]}:{warning[1]}"
+            config_str = f"{sensor_id}:{critical[0]}:{critical[1]}:{warning[0]}:{warning[1]}"
             sensor_configs.append(config_str)
         
         sensors_str = ";".join(sensor_configs)
