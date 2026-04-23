@@ -1,13 +1,24 @@
-# Adafruit Blinka - Provides board, busio, digitalio for Raspberry Pi
+# -----------------------------
+# Garden IoT Gateway (Pi5)
+# Runtime Python dependencies
+# -----------------------------
+
+# GPIO/SPI abstraction used by `board`, `busio`, `digitalio`
 adafruit-blinka>=8.20.0
 
-# Adafruit CircuitPython RFM9x library for LoRa communication
+# LoRa driver (SX127x / RFM9x)
 adafruit-circuitpython-rfm9x>=2.2.0
 
-# Dependencies for Blinka (usually installed automatically)
-pyftdi>=0.54.0
+# Explicit low-level dependency used by several CircuitPython drivers
+adafruit-circuitpython-busdevice>=5.2.10
+
+# MQTT client used by the gateway backend bridge
+paho-mqtt>=1.6.1
+
+# Raspberry Pi GPIO backend (required on target Pi device)
+RPi.GPIO>=0.7.1
+
+# Blinka platform helpers (usually pulled transitively, kept explicit)
 Adafruit-PlatformDetect>=3.47.0
 Adafruit-PureIO>=1.1.11
-
-# MQTT
-paho-mqtt>=1.6.1
+pyftdi>=0.54.0
