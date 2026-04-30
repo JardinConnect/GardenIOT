@@ -18,6 +18,7 @@ class MqttCommunication:
         self.connected = False
         self.message_callback = None
         self.subscribed_topics = []
+        self.loop_running = False
     
     def initialize(self):
         """Initialise la connexion MQTT"""
@@ -58,14 +59,13 @@ class MqttCommunication:
             
             print(f"🔌 Connexion à {self.config['broker_host']}:{self.config['broker_port']}...")
             
+            self._ensure_loop_running()
+
             self.client.connect(
                 self.config["broker_host"],
                 self.config["broker_port"],
                 keepalive=self.config.get("keepalive", 60)
             )
-            
-            # Démarrer la boucle en arrière-plan
-            self.client.loop_start()
             
             # Attendre la connexion
             start_time = time.time()
@@ -74,7 +74,6 @@ class MqttCommunication:
             
             if self.connected:
                 print(" Connecté au broker MQTT")
-                self._subscribe_to_topics()
             else:
                 print(" Timeout connexion MQTT")
                 
@@ -86,19 +85,35 @@ class MqttCommunication:
         """Tente de se reconnecter"""
         try:
             if self.client:
+                self.connected = False
+                self._ensure_loop_running()
                 self.client.reconnect()
-                self.connected = True
-                print(" Reconnexion MQTT réussie")
-                self._subscribe_to_topics()
+
+                start_time = time.time()
+                while not self.connected and (time.time() - start_time) < 5:
+                    time.sleep(0.1)
+
+                if self.connected:
+                    print(" Reconnexion MQTT réussie")
+                else:
+                    print(" Timeout reconnexion MQTT")
         except Exception as e:
             print(f" Échec reconnexion MQTT: {e}")
             self.connected = False
+
+    def _ensure_loop_running(self):
+        """S'assure que la boucle réseau MQTT tourne."""
+        if not self.loop_running:
+            self.client.loop_start()
+            self.loop_running = True
     
     def disconnect(self):
         """Déconnecte du broker"""
         if self.client:
             try:
-                self.client.loop_stop()
+                if self.loop_running:
+                    self.client.loop_stop()
+                    self.loop_running = False
                 self.client.disconnect()
                 self.connected = False
                 print("🔌 Déconnecté du broker MQTT")
@@ -169,6 +184,7 @@ class MqttCommunication:
         if rc == 0:
             self.connected = True
             print(" Connecté au broker MQTT")
+            self._subscribe_to_topics()
         else:
             self.connected = False
             print(f" Échec connexion MQTT (code {rc})")
